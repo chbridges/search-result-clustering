@@ -18,14 +18,17 @@ def chunk_generator(lst, n):
 
 
 def strip_time(time: datetime) -> str:
-    time = str(time)
-    return time[: time.rfind(".")]
+    time_str = str(time)
+    return time_str[: time_str.rfind(".")]
 
 
 if __name__ == "__main__":
     try:
         chunk_size = int(sys.argv[2]) if len(sys.argv) > 2 else 512
-        index = re.search(r"\w+$", sys.argv[1][:-12]).string
+        index_match = re.search(r"\w+$", sys.argv[1][:-12])
+        if index_match is None:
+            raise ValueError
+        index = index_match.string
         json_file = open(sys.argv[1], "r")
     except:
         print("Usage: python index_data.py <filepath> [<chunksize>]")

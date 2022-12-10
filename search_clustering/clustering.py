@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import List
 
 import numpy as np
 from sklearn.cluster import KMeans
@@ -27,7 +26,7 @@ class Clustering(ABC):
             raise ValueError
 
     @abstractmethod
-    def fit_predict(self, vecs: List[np.ndarray]) -> np.ndarray:
+    def fit_predict(self, vecs: np.ndarray) -> np.ndarray:
         raise NotImplementedError
 
 
@@ -36,7 +35,8 @@ class KMeansClustering(Clustering):
 
     def fit_predict(self, vecs: np.ndarray) -> np.ndarray:
         best_score = -self.best(-np.inf, np.inf)
-        best_labels = None
+        best_labels = np.zeros(vecs.shape[0])
+
         for k in range(2, vecs.shape[0]):
             labels = KMeans(n_clusters=k).fit_predict(vecs)
             score = self.metric(vecs, labels)
@@ -44,4 +44,5 @@ class KMeansClustering(Clustering):
                 best_score = score
                 best_labels = labels
                 continue
-            return best_labels
+
+        return best_labels

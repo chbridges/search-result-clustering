@@ -1,4 +1,3 @@
-import re
 import string
 from collections import Counter
 from typing import List

@@ -11,7 +11,8 @@ from search_clustering.preprocessing import Preprocessing
 
 
 class Pipeline:
-    """Pipeline Preprocessing, Embedding, Clustering, Labeling, and Visualization."""
+    """Pipeline Preprocessing, Embedding, Clustering, Labeling, and
+    Visualization."""
 
     def __init__(
         self,
@@ -25,9 +26,7 @@ class Pipeline:
         self.clustering = clustering
         self.labeling = labeling
 
-    def run(
-        self, docs: List[str], visualize=True
-    ) -> Tuple[List[np.ndarray], np.ndarray]:
+    def run(self, docs: List[dict], visualize=True) -> Tuple[np.ndarray, np.ndarray]:
         docs = self.preprocessing.transform(docs)
         vecs = self.embedding.transform(docs)
         clusters = self.clustering.fit_predict(vecs)

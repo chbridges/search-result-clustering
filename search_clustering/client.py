@@ -1,24 +1,12 @@
 import re
-from abc import ABC, abstractmethod
 
 from elasticsearch import Elasticsearch
 from opensearchpy import OpenSearch
 
 
-class Client(ABC):
-    client = None
-
-    @abstractmethod
+class ElasticClient:
     def __init__(self, url="http://localhost:9200"):
-        raise NotImplementedError
-
-    def _add_snippet(self, hits: list):
-        for hit in hits:
-            snippet = ""
-            for highlights in hit["highlight"].values():
-                snippet = snippet + " ".join(highlights)
-            hit["snippet"] = re.sub(r"</?em>", "", snippet)
-        return hits
+        self.client = Elasticsearch(url)
 
     def search(self, query: str, index="plos_intros", field="introduction"):
         response = self.client.search(
@@ -38,12 +26,27 @@ class Client(ABC):
         hits = self.search(query, index, field)
         return [(hit["_id"], hit["snippet"]) for hit in hits]
 
+    def _add_snippet(self, hits: list):
+        for hit in hits:
+            snippet = ""
+            for highlights in hit["highlight"].values():
+                snippet = snippet + " ".join(highlights)
+            hit["snippet"] = re.sub(r"</?em>", "", snippet)
+        return hits
 
-class ElasticClient(Client):
-    def __init__(self, url="http://localhost:9200"):
-        self.client = Elasticsearch(url)
 
-
-class OpenClient(Client):
+class OpenClient:
     def __init__(self, url="http://localhost:9200"):
         self.client = OpenSearch(url)
+
+    def search(self, query: str, index="plos_intros", field="introduction"):
+        response = self.client.search(
+            index=index,
+            body={"match_phrase": {field: query}},
+            size=100,
+        )
+
+        return response["hits"]["hits"]
+
+    def count(self, query: str, index="test", field="content"):
+        return self.client.count(index=index, body={"match_phrase": {field: query}})

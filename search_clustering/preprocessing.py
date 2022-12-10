@@ -10,14 +10,14 @@ class Preprocessing(ABC):
     """Perform text preprocessing before vector embeddings."""
 
     @abstractmethod
-    def transform(self, docs: List[str]) -> List[str]:
+    def transform(self, docs: List[dict]) -> List[dict]:
         raise NotImplementedError
 
 
 class DummyPreprocessor(Preprocessing):
     """Do nothing."""
 
-    def transform(self, docs: List[str]) -> List[str]:
+    def transform(self, docs: List[dict]) -> List[dict]:
         return docs
 
 
@@ -30,7 +30,7 @@ class StopWordRemoval(Preprocessing):
         elif word_list == "spacy":
             self.word_list = list(spacy.load("en_core_web_sm").Defaults.stop_words)
 
-    def transform(self, docs: List[str]) -> List[str]:
+    def transform(self, docs: List[dict]) -> List[dict]:
         tokens = [word_tokenize(doc["snippet"]) for doc in docs]
         tokens = [t for t in tokens if t not in self.word_list]
         for i in range(len(docs)):

@@ -11,14 +11,14 @@ class Embedding(ABC):
     """Embed input documents in vectors."""
 
     @abstractmethod
-    def transform(self, docs: List[str]) -> List[np.ndarray]:
+    def transform(self, docs: List[dict]) -> np.ndarray:
         raise NotImplementedError
 
 
 class Snippet2Vec(Embedding):
     """Embed input snippets in Doc2Vec vectors."""
 
-    def transform(self, docs: dict) -> List[np.ndarray]:
+    def transform(self, docs: List[dict]) -> np.ndarray:
         snippets = [doc["snippet"] for doc in docs]
         tagged_snippets = [TaggedDocument(doc, [i]) for i, doc in enumerate(snippets)]
         model = Doc2Vec(tagged_snippets)
@@ -28,7 +28,7 @@ class Snippet2Vec(Embedding):
 class Tfidf(Embedding):
     """Embed input snippets in TF-IDF vectors."""
 
-    def transform(self, docs: dict) -> List[np.ndarray]:
+    def transform(self, docs: List[dict]) -> np.ndarray:
         snippets = [doc["snippet"] for doc in docs]
         return TfidfVectorizer().fit_transform(snippets).todense()
 
@@ -36,7 +36,7 @@ class Tfidf(Embedding):
 class Nefidf(Embedding):
     """Embed named entities in TF-IDF vectors."""
 
-    def transform(self, docs: dict) -> List[np.ndarray]:
+    def transform(self, docs: List[dict]) -> np.ndarray:
         snippets = [doc["_source"]["introduction"] for doc in docs]
         ner = spacy.load("en_core_web_sm")
         entities = [" ".join(map(str, ner(snippet).ents)) for snippet in snippets]
