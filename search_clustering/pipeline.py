@@ -41,6 +41,7 @@ class Pipeline:
 
     def visualize(self, vecs, clusters, labels):
         pca = PCA(n_components=2).fit_transform(vecs)
-        colors = [f"C{c}" for c in clusters]
+        colors = [f"C{c}" if c >= 0 else "black" for c in clusters]
+
         plt.scatter(pca[:, 0], pca[:, 1], color=colors)
         plt.show()
