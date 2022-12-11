@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Callable, Optional
+from typing import Callable, Optional, Tuple
 
 import numpy as np
 from sklearn import cluster
@@ -33,7 +33,7 @@ class Clustering(ABC):
         return self.metric(vecs, labels)
 
     @abstractmethod
-    def fit_predict(self, vecs: np.ndarray) -> np.ndarray:
+    def fit_predict(self, vecs: np.ndarray) -> Tuple[np.ndarray, float]:
         raise NotImplementedError
 
 
@@ -45,9 +45,9 @@ class NClustersOptimization(Clustering, ABC):
     def init_model(self, n_clusters: int) -> ClusterMixin:
         raise NotImplementedError
 
-    def fit_predict(self, vecs: np.ndarray) -> np.ndarray:
-        best_score = -self.best(-np.inf, np.inf)
+    def fit_predict(self, vecs: np.ndarray) -> Tuple[np.ndarray, float]:
         best_labels = np.zeros(vecs.shape[0])
+        best_score = -self.best(-np.inf, np.inf)
 
         for k in range(2, vecs.shape[0] // 2):
             model = self.init_model(n_clusters=k)
@@ -58,7 +58,7 @@ class NClustersOptimization(Clustering, ABC):
             best_score = score
             best_labels = labels
 
-        return best_labels
+        return best_labels, best_score
 
 
 class BisectingOptimization(Clustering, ABC):
@@ -69,30 +69,31 @@ class BisectingOptimization(Clustering, ABC):
     def init_model(self, param: float) -> ClusterMixin:
         raise NotImplementedError
 
-    def fit_predict(self, vecs: np.ndarray) -> np.ndarray:
-        best_score = -self.best(-np.inf, np.inf)
+    def fit_predict(self, vecs: np.ndarray) -> Tuple[np.ndarray, float]:
         best_labels = np.zeros(vecs.shape[0])
+        best_score = -self.best(-np.inf, np.inf)
 
-        boundaries = [0.01, 0.99]
+        boundaries = [0.01, 0.5, 0.99]
 
         for _ in range(5):
-            models = [self.init_model(boundary) for boundary in boundaries]
+            params = [0.5 * sum(boundaries[:2]), 0.5 * sum(boundaries[1:])]
+            models = [self.init_model(param) for param in params]
             labels = [model.fit_predict(vecs) for model in models]
             scores = [self.score(vecs, label) for label in labels]
-            print(scores)
 
             better_score = self.best(scores[0], scores[1])
 
-            if better_score != self.best(better_score, best_score):
+            if abs(best_score - better_score) < 10e-5:
                 break
 
             better_idx = scores.index(better_score)
             best_score = better_score
             best_labels = labels[better_idx]
 
-            boundaries[1 - better_idx] = 0.5 * sum(boundaries)
+            boundaries[2 - 2 * better_idx] = params[better_idx]
+            boundaries[1] = 0.5 * (boundaries[0] + boundaries[2])
 
-        return best_labels
+        return best_labels, best_score
 
 
 class KMeans(NClustersOptimization):
@@ -146,9 +147,10 @@ class MeanShift(Clustering):
     """Perform mean shift clustering on vector embeddings, automatically
     creates a label for outliers."""
 
-    def fit_predict(self, vecs: np.ndarray) -> np.ndarray:
+    def fit_predict(self, vecs: np.ndarray) -> Tuple[np.ndarray, float]:
         model = cluster.MeanShift(cluster_all=False)
-        return model.fit_predict(vecs)
+        labels = model.fit_predict(vecs)
+        return labels, self.score(vecs, labels)
 
 
 class DBSCAN(BisectingOptimization):
