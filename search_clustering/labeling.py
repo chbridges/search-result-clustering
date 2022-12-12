@@ -18,7 +18,6 @@ class Labeling(ABC):
         raise NotImplementedError
 
     def fit_predict(self, docs: List[dict], clusters: np.ndarray) -> List[str]:
-        print(clusters)
         cluster_indices = [np.where(clusters == i) for i in range(max(clusters) + 1)]
         clustered_docs = [[docs[i] for i in cluster[0]] for cluster in cluster_indices]
         labels = [self.fit_predict_cluster(cluster) for cluster in clustered_docs]
