@@ -28,8 +28,12 @@ class Clustering(ABC):
             raise ValueError
 
     def score(self, vecs: np.ndarray, labels: np.ndarray) -> float:
-        if np.unique(labels).shape[0] == 1:
+        n_labels = np.unique(labels).shape[0]
+        if n_labels == 1:
             return -self.best(-np.inf, np.inf)
+        if n_labels > 2:
+            vecs = vecs[labels >= 0]
+            labels = labels[labels >= 0]
         return self.metric(vecs, labels)
 
     @abstractmethod
@@ -100,14 +104,14 @@ class KMeans(NClustersOptimization):
     """Perform K-Means clustering on vector embeddings."""
 
     def init_model(self, n_clusters: int) -> ClusterMixin:
-        return cluster.KMeans(n_clusters=n_clusters)
+        return cluster.KMeans(n_clusters=n_clusters, n_init="auto", random_state=42)
 
 
 class BisectingKMeans(NClustersOptimization):
     """Perform bisecting K-Means clustering on vector embeddings."""
 
     def init_model(self, n_clusters: int) -> ClusterMixin:
-        return cluster.BisectingKMeans(n_clusters=n_clusters)
+        return cluster.BisectingKMeans(n_clusters=n_clusters, random_state=42)
 
 
 class SpectralClustering(NClustersOptimization):
@@ -115,7 +119,7 @@ class SpectralClustering(NClustersOptimization):
 
     def init_model(self, n_clusters: int) -> ClusterMixin:
         return cluster.SpectralClustering(
-            n_clusters=n_clusters, assign_labels="cluster_qr"
+            n_clusters=n_clusters, assign_labels="cluster_qr", random_state=42
         )
 
 
@@ -125,7 +129,7 @@ class HierarchicalClustering(NClustersOptimization):
     def __init__(
         self,
         linkage: str = "ward",
-        affinity: str = "l2",
+        affinity: str = "euclidean",
         connectivity: Optional[Callable] = None,
         metric: str = "silhouette",
     ) -> None:

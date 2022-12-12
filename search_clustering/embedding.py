@@ -21,7 +21,7 @@ class Snippet2Vec(Embedding):
     def transform(self, docs: List[dict]) -> np.ndarray:
         snippets = [doc["snippet"] for doc in docs]
         tagged_snippets = [TaggedDocument(doc, [i]) for i, doc in enumerate(snippets)]
-        model = Doc2Vec(tagged_snippets)
+        model = Doc2Vec(tagged_snippets, seed=42, workers=1)
         return np.array([model[i] for i in range(len(tagged_snippets))])
 
 
