@@ -8,12 +8,12 @@ class ElasticClient:
     def __init__(self, url="http://localhost:9200"):
         self.client = Elasticsearch(url)
 
-    def search(self, query: str, index="plos_intros", field="introduction"):
+    def search(self, query: str, index="faz", field="introduction", size=10_000):
         response = self.client.search(
             index=index,
             query={"match_phrase": {field: query}},
             highlight={"fragment_size": 100, "fields": {field: {}}},
-            size=100,
+            size=size,
         )
 
         hits = response["hits"]["hits"]
@@ -36,6 +36,8 @@ class ElasticClient:
 
 
 class OpenClient:
+    """Opensearch-py does not seem to support highlighting."""
+
     def __init__(self, url="http://localhost:9200"):
         self.client = OpenSearch(url)
 
