@@ -1,8 +1,7 @@
-from math import log
 from abc import ABC, abstractmethod
+from math import log
 
 import numpy as np
-
 import sklearn.decomposition
 import umap
 
@@ -17,6 +16,7 @@ class Reduction(ABC):
 
 class PCA(Reduction):
     """Perform Principal Component Analysis on word embeddings."""
+
     def __init__(self, n_components: int = 64) -> None:
         self.n_components = n_components
 
@@ -24,8 +24,10 @@ class PCA(Reduction):
         pca = sklearn.decomposition.PCA(n_components=min(len(vecs), self.n_components))
         return pca.fit_transform(vecs)
 
+
 class UMAP(Reduction):
     """Perform Principal Component Analysis on word embeddings."""
+
     def __init__(self, n_components: int = 8) -> None:
         self.n_components = n_components
         self.densmap = False
@@ -39,8 +41,10 @@ class UMAP(Reduction):
             random_state=42,
         ).fit_transform(vecs)
 
+
 class DensMAP(UMAP):
     """Perform Principal Component Analysis on word embeddings."""
+
     def __init__(self, n_components: int = 8) -> None:
         super().__init__(n_components)
         self.densmap = True
