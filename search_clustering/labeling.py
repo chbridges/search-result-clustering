@@ -1,8 +1,9 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from string import punctuation
 from typing import List
 
 import numpy as np
+import topically
 from gensim.corpora import Dictionary
 from gensim.models import LdaModel, LsiModel
 from gensim.models.basemodel import BaseTopicModel
@@ -13,7 +14,6 @@ from nltk.tokenize import word_tokenize
 class Labeling(ABC):
     """Compute labels for pairs of documents and clusters."""
 
-    @abstractmethod
     def fit_predict_cluster(self, docs: List[dict]) -> str:
         raise NotImplementedError
 
@@ -33,6 +33,24 @@ class DummyLabeling(Labeling):
         return ""
 
 
+class CountLabeling(Labeling):
+    """Return cluster sizes."""
+
+    def fit_predict_cluster(self, docs: List[dict]) -> str:
+        return str(len(docs))
+
+
+class Topically(Labeling):
+    def fit_predict(self, docs: List[dict], clusters: np.ndarray) -> List[str]:
+        app = topically.Topically("Xp3NNCa65nRi8unD4lxtLSWyvng9ZVokoowqzZV5")
+        titles = [doc["_source"]["title"] for doc in docs]
+        _, topic_names = app.name_topics((titles, clusters))
+        labels = [topic_names[i] for i in range(max(topic_names.keys()))]
+        if -1 in topic_names.keys():
+            labels.append("other")
+        return labels
+
+
 class TopicModeling(Labeling):
     """Return topics using Latent Semantic Indexing."""
 
@@ -40,7 +58,7 @@ class TopicModeling(Labeling):
 
     def tokenize(self, doc: str) -> List[str]:
         tokens = word_tokenize(doc)
-        tokens = [t for t in tokens if t not in stopwords.words("english")]
+        tokens = [t for t in tokens if t not in stopwords.words("german")]
         return [t for t in tokens if t not in punctuation]
 
     def fit_predict_cluster(self, docs: List[dict]) -> str:
