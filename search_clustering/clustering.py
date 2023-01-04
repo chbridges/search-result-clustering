@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Callable, Optional, Tuple
 
+import hdbscan
 import numpy as np
 from sklearn import cluster
 from sklearn.base import ClusterMixin
@@ -53,7 +54,7 @@ class NClustersOptimization(Clustering, ABC):
         best_labels = np.zeros(vecs.shape[0])
         best_score = -self.best(-np.inf, np.inf)
 
-        for k in range(2, vecs.shape[0] // 2):
+        for k in range(max(2, vecs.shape[0] // 100), vecs.shape[0] // 2):
             model = self.init_model(n_clusters=k)
             labels = model.fit_predict(vecs)
             score = self.score(vecs, labels)
@@ -171,3 +172,19 @@ class OPTICS(BisectingOptimization):
 
     def init_model(self, min_samples: float) -> ClusterMixin:
         return cluster.OPTICS(min_samples=min_samples)
+
+
+class HDBSCAN(Clustering):
+    """Perform hierarchical density-based spatial clustering on vector
+    embeddings."""
+
+    def __init__(self, metric: str = "silhouette", min_samples=None) -> None:
+        super().__init__(metric)
+        self.min_samples = min_samples
+
+    def fit_predict(self, vecs: np.ndarray) -> Tuple[np.ndarray, float]:
+        model = hdbscan.HDBSCAN(
+            min_cluster_size=max(2, vecs.shape[0] // 100), min_samples=self.min_samples
+        )
+        labels = model.fit_predict(vecs)
+        return labels, self.score(vecs, labels)
