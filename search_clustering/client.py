@@ -14,6 +14,7 @@ class ElasticClient:
             query={"match_phrase": {field: query}},
             highlight={"fragment_size": 100, "fields": {field: {}}},
             size=size,
+            request_timeout=30,
         )
 
         hits = response["hits"]["hits"]
