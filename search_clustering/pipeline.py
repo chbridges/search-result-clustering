@@ -5,11 +5,11 @@ import numpy as np
 from sklearn.decomposition import PCA
 from umap import UMAP
 
-from search_clustering.clustering import Clustering
-from search_clustering.embedding import Embedding
 from search_clustering.labeling import Labeling
 from search_clustering.preprocessing import Preprocessing
-from search_clustering.reduction import Reduction
+from search_clustering.spatial.clustering import Clustering
+from search_clustering.spatial.embedding import Embedding
+from search_clustering.spatial.reduction import Reduction
 
 
 class Pipeline:
