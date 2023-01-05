@@ -83,6 +83,7 @@ class TemporalClustering:
             sizes = np.zeros(self.window_size)
             for j in range(self.window_size):
                 sizes[j] = len(clusters[clusters == i + j])
+            # Merge only adjacent clusters where at least 2 clusters contain documents
             if np.count_nonzero(sizes) > 1:
                 if sum(sizes) < min_size:
                     min_size = sum(sizes)
@@ -94,7 +95,10 @@ class TemporalClustering:
         for i in range(min_cluster + 1, min_cluster + self.window_size):
             clusters[clusters == i] = min_cluster
 
-        return self.remove_empty_clusters(clusters)
+        # Shift temporal clusters to the left to close resulting gap
+        clusters[clusters > min_cluster] -= self.window_size
+
+        return clusters
 
     def remove_empty_clusters(
         self, clusters: pd.Series, min_cluster: int = 0
