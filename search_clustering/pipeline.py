@@ -7,7 +7,7 @@ from umap import UMAP
 
 from search_clustering.labeling import Labeling
 from search_clustering.preprocessing import Preprocessing
-from search_clustering.spatial.clustering import Clustering
+from search_clustering.spatial.clustering import SpatialClustering
 from search_clustering.spatial.embedding import Embedding
 from search_clustering.spatial.reduction import Reduction
 
@@ -21,7 +21,7 @@ class Pipeline:
         preprocessing: Preprocessing,
         embedding: Embedding,
         reductions: Union[Reduction, List[Reduction]],
-        clustering: Clustering,
+        clustering: SpatialClustering,
         labeling: Labeling,
     ):
         self.preprocessing = preprocessing

@@ -12,7 +12,7 @@ from sklearn.metrics import (
 )
 
 
-class Clustering(ABC):
+class SpatialClustering(ABC):
     """Perform clustering on vector embeddings."""
 
     def __init__(self, metric: str = "silhouette") -> None:
@@ -42,7 +42,7 @@ class Clustering(ABC):
         raise NotImplementedError
 
 
-class NClustersOptimization(Clustering, ABC):
+class NClustersOptimization(SpatialClustering, ABC):
     """Perform clustering with n_clusters parameter optimization for algorithms
     such as KMeans."""
 
@@ -66,7 +66,7 @@ class NClustersOptimization(Clustering, ABC):
         return best_labels, best_score
 
 
-class BisectingOptimization(Clustering, ABC):
+class BisectingOptimization(SpatialClustering, ABC):
     """Perform clustering with eps or min_samples parameter optimization for
     DBSCAN and OPTICS."""
 
@@ -148,7 +148,7 @@ class HierarchicalClustering(NClustersOptimization):
         )
 
 
-class MeanShift(Clustering):
+class MeanShift(SpatialClustering):
     """Perform mean shift clustering on vector embeddings, automatically
     creates a label for outliers."""
 
@@ -174,7 +174,7 @@ class OPTICS(BisectingOptimization):
         return cluster.OPTICS(min_samples=min_samples)
 
 
-class HDBSCAN(Clustering):
+class HDBSCAN(SpatialClustering):
     """Perform hierarchical density-based spatial clustering on vector
     embeddings."""
 
