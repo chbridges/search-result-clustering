@@ -50,7 +50,7 @@ class ParagraphKeyphrasePreprocessor(Preprocessing):
 
     def add_topics(self, doc: dict) -> dict:
         title = [doc["_source"]["title"]]
-        paragraphs = title + doc["_source"]["body"].split("\n\n")
+        paragraphs = title + doc["_source"]["body"].split("\n")
         keywords = self.model.extract_keywords(
             paragraphs,
             keyphrase_ngram_range=(1, 3),
@@ -77,12 +77,12 @@ class ParagraphKeywordPreprocessor(Preprocessing):
 
     def add_topics(self, doc: dict) -> dict:
         title = [doc["_source"]["title"]]
-        paragraphs = title + doc["_source"]["body"].split("\n\n")
+        paragraphs = title + doc["_source"]["body"].split("\n")
         keywords = self.model.extract_keywords(
             paragraphs, vectorizer=self.vectorizer, seed_keywords=self.query
         )
-        doc["_source"]["topics"] = ", ".join(
-            title + [" ".join([kw[0] for kw in kw_i]) for kw_i in keywords]
+        doc["_source"]["topics"] = ". ".join(
+            title + [", ".join([kw[0] for kw in kw_i]) for kw_i in keywords]
         )
         return doc
 
