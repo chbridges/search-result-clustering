@@ -22,7 +22,7 @@ class TemporalClustering:
         else:
             raise ValueError("Parameter 'avg' must be 'mean' or 'median'")
 
-        if window_size is not None and (
+        if not window_size and (
             (isinstance(window_size, str) and window_size != "auto")
             or (isinstance(window_size, int) and window_size < 2)
         ):
