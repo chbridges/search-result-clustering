@@ -12,16 +12,22 @@ class TemporalClustering:
         target_bins: int = 10,
         window_size: Optional[int] = None,
     ) -> None:
-        self.key = key
-        self.target_bins = target_bins
-        self.window_size = window_size
-
         if avg == "mean":
             self.avg = np.mean
         elif avg == "median":
             self.avg = np.median
         else:
             raise ValueError("Parameter 'avg' must be 'mean' or 'median'")
+
+        if target_bins < 2:
+            raise ValueError("Parameter 'target_bins' must be greater than 1")
+
+        if window_size and window_size < 2:
+            raise ValueError("Parameter 'window_size' must be greater than 1")
+
+        self.key = key
+        self.target_bins = target_bins
+        self.window_size = window_size
 
     def fit_predict(self, docs: List[dict]) -> np.ndarray:
         # Construct time histogram
@@ -40,20 +46,68 @@ class TemporalClustering:
         diff = abs(self.avg(hist[0]))
         sign_changes = np.where(diff - np.mean(diff) > 0)[0] + 1
         boundaries = np.hstack(
-            (first_day, first_day + sign_changes * interval, last_day)
+            (
+                np.datetime64(first_day),
+                first_day + sign_changes * interval,
+                np.datetime64(last_day),
+            )
         )
 
         # Assign documents to temporal clusters
-        clusters = np.zeros(len(docs), dtype=int)
+        df["cluster"] = 0
 
         for i in range(len(boundaries) - 1):
             hits = df[df.date >= boundaries[i]][df.date < boundaries[i + 1]]
-            clusters[hits.index] = i
+            df["cluster"][hits.index] = i
 
-        return self.merge_clusters(docs, clusters)
+        # If window_size is set, merge clusters until n_bins <= target_bins
+        while df["cluster"].unique().shape[0] > self.target_bins:
+            merged_clusters = self.merge_clusters(df["cluster"].copy())
+            if (df["cluster"] == merged_clusters).all():
+                print(
+                    f"Warning: 'target_bins' = {self.target_bins} not reached with 'window_size' = {self.window_size}"
+                )
+                break
+            df["cluster"] = merged_clusters
 
-    def merge_clusters(self, docs: List[dict], clusters: np.ndarray) -> np.ndarray:
+        return self.remove_empty_clusters(df["cluster"])
+
+    def merge_clusters(self, clusters: pd.Series) -> pd.Series:
         if not self.window_size:
             return clusters
 
-        raise NotImplementedError
+        min_cluster = -1
+        min_size = np.inf
+
+        for i in range(clusters.max() - self.window_size + 2):
+            sizes = np.zeros(self.window_size)
+            for j in range(self.window_size):
+                sizes[j] = len(clusters[clusters == i + j])
+            if np.count_nonzero(sizes) > 1:
+                if sum(sizes) < min_size:
+                    min_size = sum(sizes)
+                    min_cluster = i
+
+        if min_cluster == -1:
+            return clusters
+
+        for i in range(min_cluster + 1, min_cluster + self.window_size):
+            clusters[clusters == i] = min_cluster
+
+        return self.remove_empty_clusters(clusters)
+
+    def remove_empty_clusters(
+        self, clusters: pd.Series, min_cluster: int = 0
+    ) -> pd.Series:
+        """Shift cluster numbers to remove gaps and produce a contiguous
+        sequence of integers."""
+        mapping = dict()
+        unique = sorted(clusters.unique())
+
+        for i in range(min_cluster, len(unique)):
+            mapping[unique[i]] = i
+
+        for i in mapping.keys():
+            clusters[clusters == i] = mapping[i]
+
+        return clusters
