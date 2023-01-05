@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -8,22 +8,25 @@ class TemporalClustering:
     def __init__(
         self,
         key: str = "publication_date",
-        avg: str = "mean",
         target_bins: int = 10,
-        window_size: Optional[int] = None,
+        average: str = "mean",
+        window_size: Optional[Union[int, str]] = "auto",
     ) -> None:
-        if avg == "mean":
-            self.avg = np.mean
-        elif avg == "median":
-            self.avg = np.median
-        else:
-            raise ValueError("Parameter 'avg' must be 'mean' or 'median'")
-
         if target_bins < 2:
             raise ValueError("Parameter 'target_bins' must be greater than 1")
 
-        if window_size and window_size < 2:
-            raise ValueError("Parameter 'window_size' must be greater than 1")
+        if average == "mean":
+            self.average = np.mean
+        elif average == "median":
+            self.average = np.median
+        else:
+            raise ValueError("Parameter 'avg' must be 'mean' or 'median'")
+
+        if window_size is not None and (
+            (isinstance(window_size, str) and window_size != "auto")
+            or (isinstance(window_size, int) and window_size < 2)
+        ):
+            raise ValueError("Parameter 'window_size' must be greater than 1 or 'auto'")
 
         self.key = key
         self.target_bins = target_bins
@@ -43,7 +46,7 @@ class TemporalClustering:
         hist = list(pd.np.histogram(df["date"].astype(int), bins=bins, density=False))
 
         # Find time bins with above-average change of n_documents
-        diff = abs(self.avg(hist[0]))
+        diff = abs(np.diff(hist[0]))
         sign_changes = np.where(diff - np.mean(diff) > 0)[0] + 1
         boundaries = np.hstack(
             (
@@ -61,28 +64,32 @@ class TemporalClustering:
             df["cluster"][hits.index] = i
 
         # If window_size is set, merge clusters until n_bins <= target_bins
-        while df["cluster"].unique().shape[0] > self.target_bins:
-            merged_clusters = self.merge_clusters(df["cluster"].copy())
-            if (df["cluster"] == merged_clusters).all():
-                print(
-                    f"Warning: 'target_bins' = {self.target_bins} not reached with 'window_size' = {self.window_size}"
-                )
-                break
-            df["cluster"] = merged_clusters
+        window_size = 2 if self.window_size == "auto" else self.window_size
+
+        if isinstance(window_size, int):
+            while df["cluster"].unique().shape[0] > self.target_bins:
+                merged_clusters = self.merge_clusters(df["cluster"].copy(), window_size)
+                if (df["cluster"] == merged_clusters).all():
+                    if self.window_size == "auto":
+                        window_size += 1
+                    else:
+                        print(
+                            f"Warning: 'target_bins' = {self.target_bins} not reached with 'window_size' = {self.window_size}"
+                        )
+                        break
+                df["cluster"] = merged_clusters
 
         return self.remove_empty_clusters(df["cluster"])
 
-    def merge_clusters(self, clusters: pd.Series) -> pd.Series:
-        if not self.window_size:
-            return clusters
-
+    def merge_clusters(self, clusters: pd.Series, window_size: int) -> pd.Series:
         min_cluster = -1
         min_size = np.inf
 
-        for i in range(clusters.max() - self.window_size + 2):
-            sizes = np.zeros(self.window_size)
-            for j in range(self.window_size):
+        for i in range(clusters.max() - window_size + 2):
+            sizes = np.zeros(window_size)
+            for j in range(window_size):
                 sizes[j] = len(clusters[clusters == i + j])
+
             # Merge only adjacent clusters where at least 2 clusters contain documents
             if np.count_nonzero(sizes) > 1:
                 if sum(sizes) < min_size:
@@ -92,11 +99,11 @@ class TemporalClustering:
         if min_cluster == -1:
             return clusters
 
-        for i in range(min_cluster + 1, min_cluster + self.window_size):
+        for i in range(min_cluster + 1, min_cluster + window_size):
             clusters[clusters == i] = min_cluster
 
         # Shift temporal clusters to the left to close resulting gap
-        clusters[clusters > min_cluster] -= self.window_size
+        clusters[clusters > min_cluster] -= window_size
 
         return clusters
 
