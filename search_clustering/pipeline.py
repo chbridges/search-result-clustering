@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from typing import List, Tuple, Union
 
 import matplotlib.pyplot as plt
@@ -10,16 +9,11 @@ from search_clustering.preprocessing import Preprocessing
 from search_clustering.spatial.clustering import SpatialClustering
 from search_clustering.spatial.embedding import Embedding
 from search_clustering.spatial.reduction import Reduction
+from search_clustering.temporal.clustering import TemporalClustering
 
 
-class Pipeline(ABC):
+class Pipeline:
     verbose = True
-
-    @abstractmethod
-    def run(
-        self, docs: List[dict], visualize=True, verbose=True
-    ) -> Tuple[np.ndarray, np.ndarray, List[str], float]:
-        raise NotImplementedError
 
     @staticmethod
     def visualize(vecs, clusters, labels):
@@ -52,7 +46,7 @@ class Pipeline(ABC):
 
 
 class SpatialPipeline(Pipeline):
-    """Pipeline Preprocessing, Embedding, Clustering, Labeling, and
+    """Pipeline Preprocessing, Embedding, SpatialClustering, Labeling, and
     Visualization."""
 
     def __init__(
@@ -71,7 +65,7 @@ class SpatialPipeline(Pipeline):
 
     def run(
         self, docs: List[dict], visualize=True, verbose=True
-    ) -> Tuple[np.ndarray, np.ndarray, List[str], float]:
+    ) -> Tuple[List[dict], np.ndarray, List[str]]:
         self.verbose = verbose
         steps = 5 + visualize
 
@@ -95,4 +89,34 @@ class SpatialPipeline(Pipeline):
             print(f"[6/{steps}] Visualizing")
             self.visualize(vecs, clusters, labels)
 
-        return vecs, clusters, labels, score
+        return docs, clusters, labels
+
+
+class TemporalPipeline(Pipeline):
+    """Pipeline Preprocessing, TemporalClustering, and Labeling."""
+
+    def __init__(
+        self,
+        preprocessing: Preprocessing,
+        clustering: TemporalClustering,
+        labeling: Labeling,
+    ):
+        self.preprocessing = preprocessing
+        self.clustering = clustering
+        self.labeling = labeling
+
+    def run(
+        self, docs: List[dict], verbose=True
+    ) -> Tuple[List[dict], np.ndarray, List[str]]:
+        self.verbose = verbose
+
+        self.print(f"[1/3] Preprocessing")
+        docs = self.preprocessing.transform(docs)
+
+        self.print(f"[2/3] Clustering")
+        clusters = self.clustering.fit_predict(docs)
+
+        self.print(f"[3/3] Labeling")
+        labels = self.labeling.fit_predict(docs, clusters)
+
+        return docs, clusters, labels
