@@ -80,7 +80,10 @@ class SpatialPipeline(Pipeline):
             vecs = reduction.transform(vecs)
 
         self.print(f"[4/{steps}] Clustering")
-        clusters, score = self.clustering.fit_predict(vecs)
+        if isinstance(self.clustering, SpatialClustering):
+            clusters, score = self.clustering.fit_predict(vecs)
+        else:
+            clusters = self.clustering.fit_predict(docs)
 
         self.print(f"[5/{steps}] Labeling")
         labels = self.labeling.fit_predict(docs, clusters)
