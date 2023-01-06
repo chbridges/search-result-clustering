@@ -2,7 +2,6 @@ from typing import List, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.decomposition import PCA
 from umap import UMAP
 
 from search_clustering.labeling import Labeling
@@ -12,7 +11,7 @@ from search_clustering.spatial.embedding import Embedding
 from search_clustering.spatial.reduction import Reduction
 
 
-class Pipeline:
+class SpatialPipeline:
     """Pipeline Preprocessing, Embedding, Clustering, Labeling, and
     Visualization."""
 
@@ -60,14 +59,14 @@ class Pipeline:
 
     @staticmethod
     def visualize(vecs, clusters, labels):
-        pca = UMAP(n_components=2).fit_transform(vecs)
+        vecs = UMAP(n_components=2).fit_transform(vecs)
         colors = [f"C{i}" for i in range(len(labels))]
         counts = [len(clusters[clusters == c]) for c in sorted(set(clusters))]
         if -1 in clusters:
             colors[-1] = "black"
             counts.append(counts.pop(0))
 
-        plt.scatter(pca[:, 0], pca[:, 1], color=[colors[c] for c in clusters])
+        plt.scatter(vecs[:, 0], vecs[:, 1], color=[colors[c] for c in clusters])
 
         handles = handles = [
             plt.Line2D(
