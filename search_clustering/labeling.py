@@ -3,6 +3,7 @@ from string import punctuation
 from typing import List
 
 import numpy as np
+import pandas as pd
 import topically
 from gensim.corpora import Dictionary
 from gensim.models import LdaModel, LsiModel
@@ -78,3 +79,18 @@ class LSI(TopicModeling):
 class LDA(TopicModeling):
     def __init__(self) -> None:
         self.model = LdaModel
+
+
+class TemporalLabeling(Labeling):
+    def __init__(self, format="%x") -> None:
+        self.format = format
+
+    def fit_predict_cluster(self, docs: List[dict]) -> str:
+        timestamps = [doc["_source"]["publication_date"][:10] for doc in docs]
+        df = pd.DataFrame(pd.to_datetime(timestamps), columns=["date"])
+        if df.min() == df.max():
+            return self.date_to_str(df.min())
+        return f"{self.date_to_str(df.min())} - {self.date_to_str(df.max())}"
+
+    def date_to_str(self, timestamp: pd.Timestamp):
+        return timestamp.strftime(self.format)
