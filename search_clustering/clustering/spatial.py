@@ -1,48 +1,23 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Callable, Optional, Tuple
 
 import hdbscan
 import numpy as np
 from sklearn import cluster
 from sklearn.base import ClusterMixin
-from sklearn.metrics import (
-    calinski_harabasz_score,
-    davies_bouldin_score,
-    silhouette_score,
-)
+
+from search_clustering.clustering._base import Clustering
 
 
-class SpatialClustering(ABC):
+class SpatialClustering(Clustering):
     """Perform clustering on vector embeddings."""
-
-    def __init__(self, metric: str = "silhouette") -> None:
-        if metric == "calinski-harabasz":
-            self.metric = calinski_harabasz_score
-            self.best = max
-        elif metric == "davies-bouldin":
-            self.metric = davies_bouldin_score
-            self.best = min
-        elif metric == "silhouette":
-            self.metric = silhouette_score
-            self.best = max
-        else:
-            raise ValueError
-
-    def score(self, vecs: np.ndarray, labels: np.ndarray) -> float:
-        n_labels = np.unique(labels).shape[0]
-        if n_labels == 1:
-            return -self.best(-np.inf, np.inf)
-        if n_labels > 2:
-            vecs = vecs[labels >= 0]
-            labels = labels[labels >= 0]
-        return self.metric(vecs, labels)
 
     @abstractmethod
     def fit_predict(self, vecs: np.ndarray) -> Tuple[np.ndarray, float]:
         raise NotImplementedError
 
 
-class NClustersOptimization(SpatialClustering, ABC):
+class NClustersOptimization(SpatialClustering):
     """Perform clustering with n_clusters parameter optimization for algorithms
     such as KMeans."""
 
@@ -66,7 +41,7 @@ class NClustersOptimization(SpatialClustering, ABC):
         return best_labels, best_score
 
 
-class BisectingOptimization(SpatialClustering, ABC):
+class BisectingOptimization(SpatialClustering):
     """Perform clustering with eps or min_samples parameter optimization for
     DBSCAN and OPTICS."""
 

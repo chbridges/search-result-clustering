@@ -4,12 +4,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 from umap import UMAP
 
+from search_clustering.clustering.spatial import SpatialClustering
+from search_clustering.clustering.temporal import TemporalClustering
+from search_clustering.embedding import Embedding
 from search_clustering.labeling import Labeling
 from search_clustering.preprocessing import Preprocessing
-from search_clustering.spatial.clustering import SpatialClustering
-from search_clustering.spatial.embedding import Embedding
-from search_clustering.spatial.reduction import Reduction
-from search_clustering.temporal.clustering import TemporalClustering
+from search_clustering.reduction import Reduction
 
 
 class Pipeline:
