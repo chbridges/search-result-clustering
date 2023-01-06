@@ -20,35 +20,36 @@ class Pipeline:
         self,
         preprocessing: Preprocessing,
         embedding: Embedding,
-        reductions: Union[Reduction, List[Reduction]],
+        reduction: Union[Reduction, List[Reduction]],
         clustering: SpatialClustering,
         labeling: Labeling,
     ):
         self.preprocessing = preprocessing
         self.embedding = embedding
-        self.reductions = reductions if isinstance(reductions, list) else [reductions]
+        self.reduction = reduction if isinstance(reduction, list) else [reduction]
         self.clustering = clustering
         self.labeling = labeling
 
     def run(
-        self, docs: List[dict], visualize=True
+        self, docs: List[dict], visualize=True, verbose=True
     ) -> Tuple[np.ndarray, np.ndarray, List[str], float]:
+        self.verbose = verbose
         steps = 5 + visualize
 
-        print(f"[1/{steps}] Preprocessing")
+        self.print(f"[1/{steps}] Preprocessing")
         docs = self.preprocessing.transform(docs)
 
-        print(f"[2/{steps}] Embedding")
+        self.print(f"[2/{steps}] Embedding")
         vecs = self.embedding.transform(docs)
 
-        print(f"[3/{steps}] Reducing Dimensionality")
-        for reduction in self.reductions:
+        self.print(f"[3/{steps}] Reducing Dimensionality")
+        for reduction in self.reduction:
             vecs = reduction.transform(vecs)
 
-        print(f"[4/{steps}] Clustering")
+        self.print(f"[4/{steps}] Clustering")
         clusters, score = self.clustering.fit_predict(vecs)
 
-        print(f"[5/{steps}] Labeling")
+        self.print(f"[5/{steps}] Labeling")
         labels = self.labeling.fit_predict(docs, clusters)
 
         if visualize:
@@ -81,3 +82,7 @@ class Pipeline:
         ]
         plt.legend(handles=handles)
         plt.show()
+
+    def print(self, msg: str) -> None:
+        if self.verbose:
+            print(msg)
