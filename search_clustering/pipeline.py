@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from typing import List, Tuple, Union
 
 import matplotlib.pyplot as plt
@@ -11,7 +12,46 @@ from search_clustering.spatial.embedding import Embedding
 from search_clustering.spatial.reduction import Reduction
 
 
-class SpatialPipeline:
+class Pipeline(ABC):
+    verbose = True
+
+    @abstractmethod
+    def run(
+        self, docs: List[dict], visualize=True, verbose=True
+    ) -> Tuple[np.ndarray, np.ndarray, List[str], float]:
+        raise NotImplementedError
+
+    @staticmethod
+    def visualize(vecs, clusters, labels):
+        vecs = UMAP(n_components=2).fit_transform(vecs)
+        colors = [f"C{i}" for i in range(len(labels))]
+        counts = [len(clusters[clusters == c]) for c in sorted(set(clusters))]
+        if -1 in clusters:
+            colors[-1] = "black"
+            counts.append(counts.pop(0))
+
+        plt.scatter(vecs[:, 0], vecs[:, 1], color=[colors[c] for c in clusters])
+
+        handles = handles = [
+            plt.Line2D(
+                [],
+                [],
+                linestyle="None",
+                color=colors[i],
+                marker="o",
+                label=f"{labels[i]}",
+            )
+            for i in range(len(labels))
+        ]
+        plt.legend(handles=handles)
+        plt.show()
+
+    def print(self, msg: str) -> None:
+        if self.verbose:
+            print(msg)
+
+
+class SpatialPipeline(Pipeline):
     """Pipeline Preprocessing, Embedding, Clustering, Labeling, and
     Visualization."""
 
@@ -56,32 +96,3 @@ class SpatialPipeline:
             self.visualize(vecs, clusters, labels)
 
         return vecs, clusters, labels, score
-
-    @staticmethod
-    def visualize(vecs, clusters, labels):
-        vecs = UMAP(n_components=2).fit_transform(vecs)
-        colors = [f"C{i}" for i in range(len(labels))]
-        counts = [len(clusters[clusters == c]) for c in sorted(set(clusters))]
-        if -1 in clusters:
-            colors[-1] = "black"
-            counts.append(counts.pop(0))
-
-        plt.scatter(vecs[:, 0], vecs[:, 1], color=[colors[c] for c in clusters])
-
-        handles = handles = [
-            plt.Line2D(
-                [],
-                [],
-                linestyle="None",
-                color=colors[i],
-                marker="o",
-                label=f"{labels[i]}",
-            )
-            for i in range(len(labels))
-        ]
-        plt.legend(handles=handles)
-        plt.show()
-
-    def print(self, msg: str) -> None:
-        if self.verbose:
-            print(msg)
