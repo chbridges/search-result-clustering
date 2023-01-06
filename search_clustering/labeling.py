@@ -21,7 +21,10 @@ class Labeling(ABC):
     def fit_predict(self, docs: List[dict], clusters: np.ndarray) -> List[str]:
         cluster_indices = [np.where(clusters == i) for i in range(max(clusters) + 1)]
         clustered_docs = [[docs[i] for i in cluster[0]] for cluster in cluster_indices]
-        labels = [self.fit_predict_cluster(cluster) for cluster in clustered_docs]
+        labels = [
+            f"{self.fit_predict_cluster(cluster)} ({len(cluster)})"
+            for cluster in clustered_docs
+        ]
         if -1 in clusters:
             labels.append("other")
         return labels
