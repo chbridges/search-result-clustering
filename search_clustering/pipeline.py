@@ -54,7 +54,7 @@ class SpatialPipeline(Pipeline):
         preprocessing: Preprocessing,
         embedding: Embedding,
         reduction: Union[Reduction, List[Reduction]],
-        clustering: SpatialClustering,
+        clustering: Union[SpatialClustering, TemporalClustering],
         labeling: Labeling,
     ):
         self.preprocessing = preprocessing
