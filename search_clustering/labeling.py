@@ -85,15 +85,17 @@ class LDA(TopicModeling):
 
 
 class TemporalLabeling(Labeling):
-    def __init__(self, format="%x") -> None:
+    def __init__(self, format="%d.%m.%Y") -> None:  # %x
         self.format = format
 
     def fit_predict_cluster(self, docs: List[dict]) -> str:
         timestamps = [doc["_source"]["publication_date"][:10] for doc in docs]
         df = pd.DataFrame(pd.to_datetime(timestamps), columns=["date"])
-        if df.min() == df.max():
-            return self.date_to_str(df.min())
-        return f"{self.date_to_str(df.min())} - {self.date_to_str(df.max())}"
+        df_min = df.min()[0]
+        df_max = df.max()[0]
+        if df_min == df_max:
+            return self.date_to_str(df_max)
+        return f"{self.date_to_str(df_min)} - {self.date_to_str(df_max)}"
 
     def date_to_str(self, timestamp: pd.Timestamp):
         return timestamp.strftime(self.format)
