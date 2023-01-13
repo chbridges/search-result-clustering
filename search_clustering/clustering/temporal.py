@@ -1,10 +1,13 @@
+from datetime import timedelta
 from typing import List, Optional, Union
 
 import numpy as np
 import pandas as pd
 
+from search_clustering.clustering._base import Clustering
 
-class TemporalClustering:
+
+class TemporalClustering(Clustering):
     def __init__(
         self,
         key: str = "publication_date",
@@ -22,7 +25,7 @@ class TemporalClustering:
         else:
             raise ValueError("Parameter 'avg' must be 'mean' or 'median'")
 
-        if not window_size and (
+        if window_size and (
             (isinstance(window_size, str) and window_size != "auto")
             or (isinstance(window_size, int) and window_size < 2)
         ):
@@ -34,7 +37,7 @@ class TemporalClustering:
 
     def fit_predict(self, docs: List[dict]) -> np.ndarray:
         # Construct time histogram
-        timestamps = [doc["_source"]["key"] for doc in docs]
+        timestamps = [doc["_source"][self.key] for doc in docs]
         df = pd.DataFrame(pd.to_datetime(timestamps), columns=["date"])
 
         first_day = df.date.min()
@@ -47,12 +50,17 @@ class TemporalClustering:
 
         # Find time bins with above-average change of n_documents
         diff = abs(np.diff(hist[0]))
-        sign_changes = np.where(diff - np.mean(diff) > 0)[0] + 1
+
+        if not self.window_size:
+            sign_changes = np.where(diff - np.mean(diff) > 0)[0] + 1
+        else:
+            sign_changes = np.arange(bins)
+
         boundaries = np.hstack(
             (
                 np.datetime64(first_day),
                 first_day + sign_changes * interval,
-                np.datetime64(last_day),
+                np.datetime64(last_day + timedelta(1)),
             )
         )
 
@@ -79,7 +87,7 @@ class TemporalClustering:
                         break
                 df["cluster"] = merged_clusters
 
-        return self.remove_empty_clusters(df["cluster"])
+        return self.remove_empty_clusters(df["cluster"]).to_numpy()
 
     def merge_clusters(self, clusters: pd.Series, window_size: int) -> pd.Series:
         min_cluster = -1
