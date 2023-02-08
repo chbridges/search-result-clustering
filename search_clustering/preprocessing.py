@@ -43,47 +43,48 @@ class StopWordRemoval(Preprocessing):
 class ParagraphKeyphrasePreprocessor(Preprocessing):
     """Assign a topic to each paragraph in the document."""
 
-    def __init__(self, query: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        query: Optional[str] = None,
+        n_gram_range: tuple = (1, 3),
+        join_topics: bool = False,
+        title_as_paragraph: bool = True,
+        include_title: bool = True,
+    ) -> None:
         self.query = [query] if query else None
+        self.n_gram_range = n_gram_range
+        self.join_topics = join_topics
+        self.title_as_paragraph = title_as_paragraph
+        self.include_title = include_title
         self.model = KeyBERT(model="paraphrase-multilingual-MiniLM-L12-v2")
         self.vectorizer = CountVectorizer(stop_words=stopwords.words("german"))
 
     def add_topics(self, doc: dict) -> dict:
-        title = [doc["_source"]["title"]]
-        paragraphs = title + doc["_source"]["body"].split("\n")
+        title = doc["_source"]["title"]
+        paragraphs = doc["_source"]["body"].split("\n")
+        if self.title_as_paragraph:
+            paragraphs = [title] + paragraphs
+
         keywords = self.model.extract_keywords(
             paragraphs,
-            keyphrase_ngram_range=(1, 3),
+            keyphrase_ngram_range=self.n_gram_range,
             vectorizer=self.vectorizer,
             seed_keywords=self.query,
         )
-        doc["_source"]["topics"] = ". ".join(
-            title + [" ".join([kw[0] for kw in kw_i]) for kw_i in keywords]
-        )
-        return doc
 
-    def transform(self, docs: List[dict]) -> List[dict]:
-        with multiprocessing.pool.ThreadPool() as pool:
-            return list(pool.imap(self.add_topics, docs, chunksize=8))
+        if self.join_topics:
+            topics = ". ".join(
+                title + [", ".join([kw[0] for kw in kw_i]) for kw_i in keywords]
+            )
+            if self.include_title:
+                topics = title + ". " + topics
+        else:
+            if self.include_title:
+                topics = [title] + keywords
+            else:
+                topics = keywords
 
-
-class ParagraphKeywordPreprocessor(Preprocessing):
-    """Assign a topic to each paragraph in the document."""
-
-    def __init__(self, query: Optional[str] = None) -> None:
-        self.query = [query] if query else None
-        self.model = KeyBERT(model="paraphrase-multilingual-MiniLM-L12-v2")
-        self.vectorizer = CountVectorizer(stop_words=stopwords.words("german"))
-
-    def add_topics(self, doc: dict) -> dict:
-        title = [doc["_source"]["title"]]
-        paragraphs = title + doc["_source"]["body"].split("\n")
-        keywords = self.model.extract_keywords(
-            paragraphs, vectorizer=self.vectorizer, seed_keywords=self.query
-        )
-        doc["_source"]["topics"] = ". ".join(
-            title + [", ".join([kw[0] for kw in kw_i]) for kw_i in keywords]
-        )
+        doc["_source"]["topics"] = topics
         return doc
 
     def transform(self, docs: List[dict]) -> List[dict]:
