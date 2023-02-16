@@ -62,6 +62,38 @@ class SentenceMiniLM(TransformerEmbedding):
         )
 
 
+class ParagraphPoolEmbeddings(Embedding):
+    """Average pool paragraph-wise embeddings.
+
+    Needs to follow ParagraphSplitter.
+    """
+
+    def __init__(self, weighted: bool = True) -> None:
+        self.weighted = weighted
+        self.embedding_model = SentenceTransformerDocumentEmbeddings(
+            "paraphrase-multilingual-MiniLM-L12-v2"
+        )
+
+    def embed(self, doc: dict) -> np.ndarray:
+        paragraphs = doc["_source"]["paragraphs"]
+
+        if self.weighted:
+            weights = np.ndarray(doc["_source"]["weights"])
+        else:
+            weights = [1 / len(paragraphs) for _ in paragraphs]
+
+        tokenized_paragraphs = [Sentence(p) for p in paragraphs]
+        tokenized_paragraphs = self.embedding_model.embed(tokenized_paragraphs)
+        embeddings = [p.embedding for p in tokenized_paragraphs]
+        weighted_embeddings = weights[:, np.newaxis] * embeddings
+        return np.sum(weighted_embeddings, axis=0)
+
+    def transform(self, docs: List[dict]) -> np.ndarray:
+        with multiprocessing.pool.ThreadPool() as pool:
+            embeddings = list(pool.imap(self.embed, docs, chunksize=8))
+        return np.vstack(embeddings)
+
+
 class Snippet2Vec(Embedding):
     """Embed input snippets in Doc2Vec vectors."""
 
