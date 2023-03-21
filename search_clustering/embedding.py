@@ -6,10 +6,12 @@ import numpy as np
 import spacy
 from flair.data import Sentence
 from flair.embeddings import (
+    DocumentPoolEmbeddings,
     SentenceTransformerDocumentEmbeddings,
     TransformerDocumentEmbeddings,
 )
 from gensim.models.doc2vec import Doc2Vec, TaggedDocument
+from nltk.tokenize import wordpunct_tokenize
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 
@@ -35,10 +37,17 @@ class TransformerEmbedding(Embedding):
         return Sentence(doc["_source"][self.key])
 
     def transform(self, docs: List[dict]) -> np.ndarray:
+        if "embedding" in docs[0]["_source"].keys():
+            return np.vstack([doc["_source"]["embedding"] for doc in docs])
+
         with multiprocessing.pool.ThreadPool() as pool:
             tokenized_docs = list(pool.imap(self.tokenize, docs, chunksize=8))
         self.embedding_model.embed(tokenized_docs)
-        return np.vstack([doc.embedding for doc in tokenized_docs])
+
+        embeddings = np.vstack([doc.embedding for doc in tokenized_docs])
+        for i in range(len(docs)):
+            docs[i]["_source"]["embedding"] = embeddings[i]
+        return embeddings
 
 
 class DistilBERT(TransformerEmbedding):
@@ -78,13 +87,13 @@ class ParagraphPoolEmbeddings(Embedding):
         paragraphs = doc["_source"]["paragraphs"]
 
         if self.weighted:
-            weights = np.ndarray(doc["_source"]["weights"])
+            weights = np.array(doc["_source"]["weights"])
         else:
             weights = [1 / len(paragraphs) for _ in paragraphs]
 
         tokenized_paragraphs = [Sentence(p) for p in paragraphs]
         tokenized_paragraphs = self.embedding_model.embed(tokenized_paragraphs)
-        embeddings = [p.embedding for p in tokenized_paragraphs]
+        embeddings = np.vstack([p.embedding for p in tokenized_paragraphs])
         weighted_embeddings = weights[:, np.newaxis] * embeddings
         return np.sum(weighted_embeddings, axis=0)
 
@@ -94,13 +103,20 @@ class ParagraphPoolEmbeddings(Embedding):
         return np.vstack(embeddings)
 
 
-class Snippet2Vec(Embedding):
+class Col2Vec(Embedding):
     """Embed input snippets in Doc2Vec vectors."""
 
+    def __init__(self, column: str, dim: int = 100) -> None:
+        self.column = column
+        self.dim = dim
+
     def transform(self, docs: List[dict]) -> np.ndarray:
-        snippets = [doc["snippet"] for doc in docs]
-        tagged_snippets = [TaggedDocument(doc, [i]) for i, doc in enumerate(snippets)]
-        model = Doc2Vec(tagged_snippets, seed=42, workers=1)
+        docs_col = [doc["_source"][self.column] for doc in docs]
+        tagged_snippets = [
+            TaggedDocument(wordpunct_tokenize(doc), [i])
+            for i, doc in enumerate(docs_col)
+        ]
+        model = Doc2Vec(tagged_snippets, vector_size=self.dim, seed=42, workers=1)
         return np.array([model[i] for i in range(len(tagged_snippets))])
 
 
