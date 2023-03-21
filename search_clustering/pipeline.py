@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from typing import List, Tuple, Union
 
 import matplotlib.pyplot as plt
@@ -12,19 +13,31 @@ from search_clustering.preprocessing import Preprocessing
 from search_clustering.reduction import Reduction
 
 
-class Pipeline:
+class Pipeline(ABC):
     verbose = True
 
+    @abstractmethod
+    def fit_transform(
+        self, docs: List[dict], visualize: bool, verbose: bool
+    ) -> Tuple[List[dict], np.ndarray, List[str]]:
+        raise NotImplementedError
+
     @staticmethod
-    def visualize(vecs, clusters, labels):
+    def visualize(vecs, clusters, labels, title=""):
+        fig = plt.figure(figsize=(4, 4))
         vecs = UMAP(n_components=2).fit_transform(vecs)
-        colors = [f"C{i}" for i in range(len(labels))]
+        colors = [f"C{i}" for i in range(max(clusters) + 1)] + ["black"]
         counts = [len(clusters[clusters == c]) for c in sorted(set(clusters))]
         if -1 in clusters:
-            colors[-1] = "black"
             counts.append(counts.pop(0))
 
-        plt.scatter(vecs[:, 0], vecs[:, 1], color=[colors[c] for c in clusters])
+        plt.scatter(
+            vecs[:, 0],
+            vecs[:, 1],
+            color=[colors[c] for c in clusters],
+            alpha=0.75,
+            s=10,
+        )
 
         handles = handles = [
             plt.Line2D(
@@ -37,7 +50,9 @@ class Pipeline:
             )
             for i in range(len(labels))
         ]
-        plt.legend(handles=handles)
+        # plt.legend(loc="center left", bbox_to_anchor=(1, 0.5), handles=handles)
+        plt.title(title)
+        plt.tight_layout()
         plt.show()
 
     def print(self, msg: str) -> None:
@@ -63,8 +78,8 @@ class SpatialPipeline(Pipeline):
         self.clustering = clustering
         self.labeling = labeling
 
-    def run(
-        self, docs: List[dict], visualize=True, verbose=True
+    def fit_transform(
+        self, docs: List[dict], visualize=True, verbose=True, title=""
     ) -> Tuple[List[dict], np.ndarray, List[str]]:
         self.verbose = verbose
         steps = 5 + visualize
@@ -90,7 +105,7 @@ class SpatialPipeline(Pipeline):
 
         if visualize:
             print(f"[6/{steps}] Visualizing")
-            self.visualize(vecs, clusters, labels)
+            self.visualize(vecs, clusters, labels, title)
 
         return docs, clusters, labels
 
@@ -108,8 +123,8 @@ class TemporalPipeline(Pipeline):
         self.clustering = clustering
         self.labeling = labeling
 
-    def run(
-        self, docs: List[dict], verbose=True
+    def fit_transform(
+        self, docs: List[dict], visualize=True, verbose=True
     ) -> Tuple[List[dict], np.ndarray, List[str]]:
         self.verbose = verbose
 

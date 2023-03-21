@@ -1,16 +1,25 @@
 from pathlib import Path
 from typing import Dict, Optional, Union
 
+import numpy as np
 import pandas as pd
 from flair.data import Sentence
 from flair.embeddings import DocumentPoolEmbeddings, WordEmbeddings
+from sklearn.metrics import fowlkes_mallows_score
+from sklearn.neighbors import KNeighborsClassifier
 from torch import Tensor, mean, stack
 
-DEFAULT_PATH = str(Path(__file__).parent / "datasets/odp-239")
+DEFAULT_PATH = str(Path(__file__).parent / "../../datasets/odp-239")
 
 
 def split_target_name(target_name: str) -> str:
     return " ".join(target_name.split("_"))
+
+
+def embed_target_name(target_name: str, embeddings: DocumentPoolEmbeddings) -> Tensor:
+    sentence = Sentence(target_name)
+    embeddings.embed(sentence)
+    return sentence.embedding
 
 
 def strip_subtopic_id(subtopic_id: str) -> str:
@@ -91,7 +100,7 @@ def load_odp239(
     return df_splits
 
 
-def embed_odp239(
+def embed_odp239_labels(
     data: dict,
     embeddings: Optional[DocumentPoolEmbeddings] = None,
     return_topic_ids: bool = True,
@@ -114,17 +123,16 @@ def embed_odp239(
     embedding_cache = {}
 
     for category in data.keys():
+        data[category]["target_embeddings"] = {}
         target_names = data[category]["target_names"]
 
         for subtopic_id, topic_subtopic in target_names.items():
             if return_topic_ids:
                 subtopic_id = strip_subtopic_id(subtopic_id)
 
-            for t in topic_subtopic:
-                if t not in embedding_cache:
-                    sentence = Sentence(t)
-                    embeddings.embed(sentence)
-                    embedding_cache[t] = sentence.embedding
+            for label in topic_subtopic:
+                if label not in embedding_cache:
+                    embedding_cache[label] = embed_target_name(label, embeddings)
 
             topic, subtopic = topic_subtopic
             target_name_embedding = mean(
@@ -135,6 +143,26 @@ def embed_odp239(
     return data
 
 
+def score_knn(
+    data_cat: dict,
+    clusters: np.ndarray,
+    label_embeddings: np.ndarray,
+    n_neighbors: int = 6,
+    weights: str = "uniform",
+) -> float:
+    knn = KNeighborsClassifier(n_neighbors=n_neighbors, weights=weights)
+
+    target_embeddings = data_cat["target_embeddings"]
+    X = np.vstack([embedding.numpy() for embedding in target_embeddings.keys()])
+    y = list(target_embeddings.values())
+    knn.fit(X, y)
+
+    labels = knn.predict(label_embeddings)
+    predictions = [labels[c] for c in clusters]
+
+    return fowlkes_mallows_score(data_cat["target"], predictions)
+
+
 if __name__ == "__main__":
     data = load_odp239()
-    data = embed_odp239(data)
+    data = embed_odp239_labels(data)

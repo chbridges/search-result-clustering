@@ -17,6 +17,13 @@ class SpatialClustering(Clustering):
         raise NotImplementedError
 
 
+class DummyClustering(SpatialClustering):
+    """Perform no clustering."""
+
+    def fit_predict(self, vecs: np.ndarray) -> Tuple[np.ndarray, float]:
+        return np.zeros(vecs.shape[0], dtype=np.int8), 0
+
+
 class NClustersOptimization(SpatialClustering):
     """Perform clustering with n_clusters parameter optimization for algorithms
     such as KMeans."""
