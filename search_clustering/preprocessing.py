@@ -40,6 +40,21 @@ class StopWordRemoval(Preprocessing):
         return docs
 
 
+class ColumnMerger(Preprocessing):
+    """Merge multiple columns."""
+
+    def __init__(self, columns: list, sep: str = ". ") -> None:
+        self.columns = columns
+        self.sep = sep
+
+    def transform(self, docs: List[dict]) -> List[dict]:
+        for i in range(len(docs)):
+            source = docs[i]["_source"]
+            merged = self.sep.join([source[col] for col in self.columns])
+            docs[i]["_source"]["merged"] = merged
+        return docs
+
+
 class ParagraphSplitter(Preprocessing):
     """Split body into paragraphs."""
 
@@ -72,16 +87,19 @@ class ParagraphKeyphraseExtractor(Preprocessing):
         self,
         query: Optional[str] = None,
         include_title: bool = True,
-        n_gram_range: tuple = (1, 3),
+        ngram_range: tuple = (1, 3),
     ) -> None:
         self.query = [query] if query else None
         self.splitter = ParagraphSplitter(include_title)
         self.model = KeyBERT(model="paraphrase-multilingual-MiniLM-L12-v2")
         self.vectorizer = CountVectorizer(
-            stop_words=stopwords.words("german"), n_gram_range=n_gram_range
+            stop_words=stopwords.words("german"), ngram_range=ngram_range
         )
 
     def add_topics(self, doc: dict) -> dict:
+        if "topics" in doc["_source"].keys():
+            return doc
+
         title = doc["_source"]["title"]
 
         keywords = self.model.extract_keywords(
