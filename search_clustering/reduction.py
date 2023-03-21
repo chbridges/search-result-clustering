@@ -3,7 +3,7 @@ from math import log
 
 import numpy as np
 import sklearn.decomposition
-import umap
+from umap import UMAP
 
 
 class Reduction(ABC):
@@ -12,6 +12,13 @@ class Reduction(ABC):
     @abstractmethod
     def transform(self, vecs: np.ndarray) -> np.ndarray:
         raise NotImplementedError
+
+
+class DummyReduction(Reduction):
+    """Do nothing."""
+
+    def transform(self, vecs: np.ndarray) -> np.ndarray:
+        return vecs
 
 
 class PCA(Reduction):
@@ -25,26 +32,18 @@ class PCA(Reduction):
         return pca.fit_transform(vecs)
 
 
-class UMAP(Reduction):
+class Umap(Reduction):
     """Perform Principal Component Analysis on word embeddings."""
 
-    def __init__(self, n_components: int = 8) -> None:
+    def __init__(self, n_components: int = 8, densmap: bool = False) -> None:
         self.n_components = n_components
-        self.densmap = False
+        self.densmap = densmap
 
     def transform(self, vecs: np.ndarray) -> np.ndarray:
-        return umap.UMAP(
+        return UMAP(
             densmap=self.densmap,
             n_neighbors=round(2 * log(len(vecs), 2)),
             min_dist=0.0,
             n_components=max(self.n_components, 2),
             random_state=42,
         ).fit_transform(vecs)
-
-
-class DensMAP(UMAP):
-    """Perform Principal Component Analysis on word embeddings."""
-
-    def __init__(self, n_components: int = 8) -> None:
-        super().__init__(n_components)
-        self.densmap = True
