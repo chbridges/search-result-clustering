@@ -9,7 +9,7 @@ from sklearn.base import ClusterMixin
 from search_clustering.clustering._base import Clustering
 
 
-class SpatialClustering(Clustering):
+class KNNClustering(Clustering):
     """Perform clustering on vector embeddings."""
 
     @abstractmethod
@@ -17,14 +17,14 @@ class SpatialClustering(Clustering):
         raise NotImplementedError
 
 
-class DummyClustering(SpatialClustering):
+class DummyClustering(KNNClustering):
     """Perform no clustering."""
 
     def fit_predict(self, vecs: np.ndarray) -> Tuple[np.ndarray, float]:
         return np.zeros(vecs.shape[0], dtype=np.int8), 0
 
 
-class NClustersOptimization(SpatialClustering):
+class NClustersOptimization(KNNClustering):
     """Perform clustering with n_clusters parameter optimization for algorithms
     such as KMeans."""
 
@@ -48,7 +48,7 @@ class NClustersOptimization(SpatialClustering):
         return best_labels, best_score
 
 
-class BisectingOptimization(SpatialClustering):
+class BisectingOptimization(KNNClustering):
     """Perform clustering with eps or min_samples parameter optimization for
     DBSCAN and OPTICS."""
 
@@ -130,7 +130,7 @@ class HierarchicalClustering(NClustersOptimization):
         )
 
 
-class MeanShift(SpatialClustering):
+class MeanShift(KNNClustering):
     """Perform mean shift clustering on vector embeddings, automatically
     creates a label for outliers."""
 
@@ -156,7 +156,7 @@ class OPTICS(BisectingOptimization):
         return cluster.OPTICS(min_samples=min_samples)
 
 
-class HDBSCAN(SpatialClustering):
+class HDBSCAN(KNNClustering):
     """Perform hierarchical density-based spatial clustering on vector
     embeddings."""
 

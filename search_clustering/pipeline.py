@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from umap import UMAP
 
-from search_clustering.clustering.spatial import SpatialClustering
+from search_clustering.clustering.knn import KNNClustering
 from search_clustering.clustering.temporal import TemporalClustering
 from search_clustering.embedding import Embedding
 from search_clustering.labeling import Labeling
@@ -22,46 +22,19 @@ class Pipeline(ABC):
     ) -> Tuple[List[dict], np.ndarray, List[str]]:
         raise NotImplementedError
 
-    @staticmethod
-    def visualize(vecs, clusters, labels, title=""):
-        fig = plt.figure(figsize=(4, 4))
-        vecs = UMAP(n_components=2).fit_transform(vecs)
-        colors = [f"C{i}" for i in range(max(clusters) + 1)] + ["black"]
-        counts = [len(clusters[clusters == c]) for c in sorted(set(clusters))]
-        if -1 in clusters:
-            counts.append(counts.pop(0))
-
-        plt.scatter(
-            vecs[:, 0],
-            vecs[:, 1],
-            color=[colors[c] for c in clusters],
-            alpha=0.75,
-            s=10,
-        )
-
-        handles = handles = [
-            plt.Line2D(
-                [],
-                [],
-                linestyle="None",
-                color=colors[i],
-                marker="o",
-                label=f"{labels[i]}",
-            )
-            for i in range(len(labels))
-        ]
-        # plt.legend(loc="center left", bbox_to_anchor=(1, 0.5), handles=handles)
-        plt.title(title)
-        plt.tight_layout()
-        plt.show()
+    @abstractmethod
+    def visualize(
+        self, vecs: np.ndarray, clusters: np.ndarray, labels: list, title: str = ""
+    ):
+        raise NotImplementedError
 
     def print(self, msg: str) -> None:
         if self.verbose:
             print(msg)
 
 
-class SpatialPipeline(Pipeline):
-    """Pipeline Preprocessing, Embedding, SpatialClustering, Labeling, and
+class KNNPipeline(Pipeline):
+    """Pipeline Preprocessing, Embedding, KNNClustering, Labeling, and
     Visualization."""
 
     def __init__(
@@ -69,7 +42,7 @@ class SpatialPipeline(Pipeline):
         preprocessing: Preprocessing,
         embedding: Embedding,
         reduction: Union[Reduction, List[Reduction]],
-        clustering: Union[SpatialClustering, TemporalClustering],
+        clustering: Union[KNNClustering, TemporalClustering],
         labeling: Labeling,
     ):
         self.preprocessing = preprocessing
@@ -95,7 +68,7 @@ class SpatialPipeline(Pipeline):
             vecs = reduction.transform(vecs)
 
         self.print(f"[4/{steps}] Clustering")
-        if isinstance(self.clustering, SpatialClustering):
+        if isinstance(self.clustering, KNNClustering):
             clusters, score = self.clustering.fit_predict(vecs)
         else:
             clusters = self.clustering.fit_predict(docs)
@@ -108,6 +81,40 @@ class SpatialPipeline(Pipeline):
             self.visualize(vecs, clusters, labels, title)
 
         return docs, clusters, labels
+
+    def visualize(
+        self, vecs: np.ndarray, clusters: np.ndarray, labels: list, title: str = ""
+    ):
+        fig = plt.figure(figsize=(4, 4))
+        vecs = UMAP(n_components=2).fit_transform(vecs)
+        colors = [f"C{i}" for i in range(max(clusters) + 1)] + ["black"]
+        counts = [len(clusters[clusters == c]) for c in sorted(set(clusters))]
+        if -1 in clusters:
+            counts.append(counts.pop(0))
+
+        plt.scatter(
+            vecs[:, 0],
+            vecs[:, 1],
+            color=[colors[c] for c in clusters],
+            alpha=0.75,
+            s=10,
+        )
+
+        handles = [
+            plt.Line2D(
+                [],
+                [],
+                linestyle="None",
+                color=colors[i],
+                marker="o",
+                label=f"{labels[i]}",
+            )
+            for i in range(len(labels))
+        ]
+        plt.legend(loc="center left", bbox_to_anchor=(1, 0.5), handles=handles)
+        plt.title(title)
+        plt.tight_layout()
+        plt.show()
 
 
 class TemporalPipeline(Pipeline):
@@ -124,17 +131,56 @@ class TemporalPipeline(Pipeline):
         self.labeling = labeling
 
     def fit_transform(
-        self, docs: List[dict], visualize=True, verbose=True
+        self,
+        docs: List[dict],
+        visualize: bool = True,
+        verbose: bool = True,
+        title: str = "",
     ) -> Tuple[List[dict], np.ndarray, List[str]]:
         self.verbose = verbose
+        steps = 3 + visualize
 
-        self.print(f"[1/3] Preprocessing")
+        self.print(f"[1/{steps}] Preprocessing")
         docs = self.preprocessing.transform(docs)
 
-        self.print(f"[2/3] Clustering")
-        clusters = self.clustering.fit_predict(docs)
+        self.print(f"[2/{steps}] Clustering")
+        clusters, hist = self.clustering.fit_predict(docs)
 
-        self.print(f"[3/3] Labeling")
+        self.print(f"[3/{steps}] Labeling")
         labels = self.labeling.fit_predict(docs, clusters)
 
+        if visualize:
+            self.print(f"[4/{steps}] Visualizing")
+            self.visualize(hist, clusters, labels, title)
+
         return docs, clusters, labels
+
+    def visualize(
+        self, hist: np.ndarray, clusters: np.ndarray, labels: list, title: str = ""
+    ):
+        bins = len(hist)
+        labels = [label[: label.find(" -")] for label in labels if " -" in label]
+
+        colors = ["C0" for _ in range(bins)]
+        xticks = ["" for _ in range(bins)]
+        xticks[0] = labels[0]
+
+        color = 0
+        bin_sum = 0
+
+        for i in range(len(colors)):
+            bin_sum += hist[i]
+            colors[i] = f"C{color}"
+            if bin_sum >= len(clusters[clusters == color]):
+                color += 1
+                bin_sum = 0
+                if color < len(labels):
+                    xticks[i + 1] = labels[color]
+
+        plt.figure(figsize=(5, 4))
+        plt.bar(range(bins), hist, color=colors, label=r"$c_1$")
+        for i in range(1, len(labels)):
+            plt.bar(0, 0, color=f"C{i}", label="$c_{" + str(i + 1) + "}$")
+        plt.xticks(range(bins), xticks, rotation=90)
+        plt.legend(loc="center left", bbox_to_anchor=(1, 0.5))
+        plt.show()

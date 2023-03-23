@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -35,7 +35,7 @@ class TemporalClustering(Clustering):
         self.target_bins = target_bins
         self.window_size = window_size
 
-    def fit_predict(self, docs: List[dict]) -> np.ndarray:
+    def fit_predict(self, docs: List[dict]) -> Tuple[np.ndarray, np.ndarray]:
         # Construct time histogram
         timestamps = [doc["_source"][self.key] for doc in docs]
         df = pd.DataFrame(pd.to_datetime(timestamps), columns=["date"])
@@ -46,10 +46,12 @@ class TemporalClustering(Clustering):
         bins = self.target_bins if not self.window_size else 100
         interval = timespan / bins
 
-        hist = list(pd.np.histogram(df["date"].astype(int), bins=bins, density=False))
+        hist = list(pd.np.histogram(df["date"].astype(int), bins=bins, density=False))[
+            0
+        ]
 
         # Find time bins with above-average change of n_documents
-        diff = abs(np.diff(hist[0]))
+        diff = abs(np.diff(hist))
 
         if not self.window_size:
             sign_changes = np.where(diff - np.mean(diff) > 0)[0] + 1
@@ -87,7 +89,7 @@ class TemporalClustering(Clustering):
                         break
                 df["cluster"] = merged_clusters
 
-        return self.remove_empty_clusters(df["cluster"]).to_numpy()
+        return self.remove_empty_clusters(df["cluster"]).to_numpy(), hist
 
     def merge_clusters(self, clusters: pd.Series, window_size: int) -> pd.Series:
         min_cluster = -1
@@ -99,7 +101,7 @@ class TemporalClustering(Clustering):
                 sizes[j] = len(clusters[clusters == i + j])
 
             # Merge only adjacent clusters where at least 2 clusters contain documents
-            if np.count_nonzero(sizes) > 1:
+            if sizes[0] > 0 and sizes[-1] > 0:
                 if sum(sizes) < min_size:
                     min_size = sum(sizes)
                     min_cluster = i
