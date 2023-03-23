@@ -11,7 +11,7 @@ class TemporalClustering(Clustering):
     def __init__(
         self,
         key: str = "publication_date",
-        target_bins: int = 10,
+        target_bins: int = 20,
         average: str = "mean",
         window_size: Optional[Union[int, str]] = "auto",
     ) -> None:
