@@ -155,32 +155,43 @@ class TemporalPipeline(Pipeline):
 
         return docs, clusters, labels
 
+    def _truncate_label(self, label: str):
+        if " -" in label:
+            return label[: label.find(" -")]
+        if " (" in label:
+            return label[: label.find(" (")]
+        return label
+
     def visualize(
         self, hist: np.ndarray, clusters: np.ndarray, labels: list, title: str = ""
     ):
         bins = len(hist)
-        labels = [label[: label.find(" -")] for label in labels if " -" in label]
-
         colors = ["C0" for _ in range(bins)]
+
+        timestamps = [self._truncate_label(label) for label in labels]
+
+        label_next_bin = True
         xticks = ["" for _ in range(bins)]
-        xticks[0] = labels[0]
 
         color = 0
         bin_sum = 0
 
         for i in range(len(colors)):
+            if label_next_bin and hist[i] > 0 and color < len(timestamps):
+                xticks[i] = timestamps[color]
+                label_next_bin = False
+
             bin_sum += hist[i]
             colors[i] = f"C{color}"
             if bin_sum >= len(clusters[clusters == color]):
                 color += 1
                 bin_sum = 0
-                if color < len(labels):
-                    xticks[i + 1] = labels[color]
+                label_next_bin = True
 
         plt.figure(figsize=(5, 4))
-        plt.bar(range(bins), hist, color=colors, label=r"$c_1$")
+        plt.bar(range(bins), hist, color=colors, label=labels[0])
         for i in range(1, len(labels)):
-            plt.bar(0, 0, color=f"C{i}", label="$c_{" + str(i + 1) + "}$")
+            plt.bar(0, 0, color=f"C{i}", label=labels[i])
         plt.xticks(range(bins), xticks, rotation=90)
         plt.legend(loc="center left", bbox_to_anchor=(1, 0.5))
         plt.show()
