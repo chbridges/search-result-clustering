@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from flair.data import Sentence
 from flair.embeddings import DocumentPoolEmbeddings, WordEmbeddings
-from sklearn.metrics import fowlkes_mallows_score
+from sklearn.metrics import adjusted_rand_score, fowlkes_mallows_score
 from sklearn.neighbors import KNeighborsClassifier
 from torch import Tensor, mean, stack
 
@@ -150,7 +150,7 @@ def score_knn(
     data_cat: dict,
     clusters: np.ndarray,
     label_embeddings: np.ndarray,
-    n_neighbors: int = 6,
+    n_neighbors: int = 1,
     weights: str = "uniform",
 ) -> float:
     knn = KNeighborsClassifier(n_neighbors=n_neighbors, weights=weights)
@@ -163,7 +163,7 @@ def score_knn(
     labels = knn.predict(label_embeddings)
     predictions = [labels[c] for c in clusters]
 
-    return fowlkes_mallows_score(data_cat["target"], predictions)
+    return adjusted_rand_score(data_cat["target"], predictions)
 
 
 if __name__ == "__main__":
