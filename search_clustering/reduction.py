@@ -17,6 +17,9 @@ class Reduction(ABC):
 class DummyReduction(Reduction):
     """Do nothing."""
 
+    def __init__(self) -> None:
+        self.n_components = ""
+
     def transform(self, vecs: np.ndarray) -> np.ndarray:
         return vecs
 
