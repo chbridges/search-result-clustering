@@ -65,9 +65,14 @@ class Topically(Labeling):
 
 class FrequentPhrases(Labeling):
     def __init__(
-        self, n: int = 3, column: str = "title", language: str = "german"
+        self,
+        n_phrases: int = 3,
+        column: str = "title",
+        language: str = "german",
+        n_gram_max: int = 5,
     ) -> None:
-        self.n = n
+        self.n_phrases = n_phrases
+        self.n_gram_max = n_gram_max
         self.column = column
         self.stopwords = stopwords.words(language)
 
@@ -88,7 +93,7 @@ class FrequentPhrases(Labeling):
 
     def fit_predict_cluster(self, docs: List[dict]) -> str:
         token_pattern = r"(?u)\b\w+\b"  # nosec
-        vectorizer = CountVectorizer(ngram_range=(1, 3), token_pattern=token_pattern)
+        vectorizer = CountVectorizer(ngram_range=(1, 5), token_pattern=token_pattern)
         titles = [doc["_source"][self.column] for doc in docs]
 
         counts_per_doc = vectorizer.fit_transform(titles)
@@ -99,7 +104,7 @@ class FrequentPhrases(Labeling):
         frequent_phrases: List[str] = []
 
         for i in argsort_desc:
-            if len(frequent_phrases) == self.n:
+            if len(frequent_phrases) == self.n_gram_max:
                 break
             phrase = vocabulary[i]
             tokens = word_tokenize(phrase)
@@ -109,7 +114,8 @@ class FrequentPhrases(Labeling):
         if len(frequent_phrases) == 0:
             return vocabulary[argsort_desc[0]]
 
-        return ", ".join(self.clean_labels(frequent_phrases))
+        frequent_phrases = self.clean_labels(frequent_phrases)
+        return ", ".join(frequent_phrases[: self.n_phrases])
 
 
 class TopicModeling(Labeling):
