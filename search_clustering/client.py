@@ -8,22 +8,22 @@ class ElasticClient:
     def __init__(self, url="http://localhost:9200"):
         self.client = Elasticsearch(url)
 
-    def search(self, query: str, index="faz", field="introduction", size=10_000):
+    def search(self, query: str, index="faz", field="body", size=10_000):
         response = self.client.search(
             index=index,
             query={"match_phrase": {field: query}},
             highlight={"fragment_size": 100, "fields": {field: {}}},
             size=size,
-            request_timeout=30,
+            request_timeout=60,
         )
 
         hits = response["hits"]["hits"]
         return self._add_snippet(hits)
 
-    def count(self, query: str, index="test", field="content"):
+    def count(self, query: str, index="faz", field="body"):
         return self.client.count(index=index, query={"match_phrase": {field: query}})
 
-    def get_snippets(self, query: str, index="test", field="content"):
+    def get_snippets(self, query: str, index="faz", field="body"):
         hits = self.search(query, index, field)
         return [(hit["_id"], hit["snippet"]) for hit in hits]
 
