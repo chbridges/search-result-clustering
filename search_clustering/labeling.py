@@ -1,4 +1,5 @@
 from abc import ABC
+from copy import copy
 from string import punctuation
 from typing import List
 
@@ -70,6 +71,21 @@ class FrequentPhrases(Labeling):
         self.column = column
         self.stopwords = stopwords.words(language)
 
+    def clean_labels(self, labels: List[str]) -> List[str]:
+        """Merge labels and return list without duplicates."""
+        merged_labels = copy(labels)
+
+        for i in range(len(labels)):
+            label_i = labels[i]
+            idx_i = merged_labels.index(label_i)
+
+            for j in range(len(labels)):
+                if i != j and label_i in labels[j]:
+                    merged_labels.pop(idx_i)
+                    break
+
+        return merged_labels
+
     def fit_predict_cluster(self, docs: List[dict]) -> str:
         token_pattern = r"(?u)\b\w+\b"  # nosec
         vectorizer = CountVectorizer(ngram_range=(1, 3), token_pattern=token_pattern)
@@ -93,7 +109,7 @@ class FrequentPhrases(Labeling):
         if len(frequent_phrases) == 0:
             return vocabulary[argsort_desc[0]]
 
-        return ", ".join(frequent_phrases)
+        return ", ".join(self.clean_labels(frequent_phrases))
 
 
 class TopicModeling(Labeling):
