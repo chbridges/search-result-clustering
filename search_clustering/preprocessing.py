@@ -4,6 +4,8 @@ from typing import List, Optional
 
 import numpy as np
 from bertopic import BERTopic
+from flair.data import Sentence
+from flair.models import SequenceTagger
 from gensim.models.doc2vec import Doc2Vec, TaggedDocument
 from keybert import KeyBERT
 from nltk.corpus import stopwords
@@ -27,13 +29,14 @@ class DummyPreprocessor(Preprocessing):
 
 
 class StopWordRemoval(Preprocessing):
-    """Remove stopwords."""
+    """Remove stopwords from a given column."""
 
-    def __init__(self, language="german"):
+    def __init__(self, column: str = "body", language: str = "german"):
+        self.column = column
         self.word_list = stopwords.words(language)
 
     def transform(self, docs: List[dict]) -> List[dict]:
-        tokens = [word_tokenize(doc["snippet"]) for doc in docs]
+        tokens = [word_tokenize(doc["_source"][self.column]) for doc in docs]
         tokens = [t for t in tokens if t not in self.word_list]
         for i in range(len(docs)):
             docs[i]["snippet"] = " ".join(tokens[i])
@@ -86,11 +89,9 @@ class ParagraphKeyphraseExtractor(Preprocessing):
     def __init__(
         self,
         query: Optional[str] = None,
-        include_title: bool = True,
         ngram_range: tuple = (1, 3),
     ) -> None:
         self.query = [query] if query else None
-        self.splitter = ParagraphSplitter(include_title)
         self.model = KeyBERT(model="paraphrase-multilingual-MiniLM-L12-v2")
         self.vectorizer = CountVectorizer(
             stop_words=stopwords.words("german"), ngram_range=ngram_range
@@ -115,8 +116,6 @@ class ParagraphKeyphraseExtractor(Preprocessing):
         return doc
 
     def transform(self, docs: List[dict]) -> List[dict]:
-        docs = self.splitter.transform(docs)
-
         with multiprocessing.pool.ThreadPool() as pool:
             return list(pool.imap(self.add_topics, docs, chunksize=8))
 
@@ -149,3 +148,41 @@ class ParagraphTopicPreprocessor(Preprocessing):
     def transform(self, docs: List[dict]) -> List[dict]:
         with multiprocessing.pool.ThreadPool() as pool:
             return list(pool.imap(self.add_topics, docs, chunksize=8))
+
+
+class NER(Preprocessing):
+    """Extract named entities from a given column."""
+
+    def _init__(self, column: str = "body") -> None:
+        self.column = column
+        self.tagger = SequenceTagger.load("ner-multi")  # EN, DE, NL, ES
+
+    def transform(self, docs: List[dict]) -> List[dict]:
+        for i in range(len(docs)):
+            sentence = Sentence(docs[i]["_source"][self.column])
+            self.tagger.predict(sentence)
+            entities = [label.data_point.text for label in sentence.get_labels()]
+            docs[i]["_source"]["entities"] = ", ".join(entities)
+        return docs
+
+
+class ParagraphNER(Preprocessing):
+    """Extract named entities from individual paragraphs."""
+
+    def __init__(self) -> None:
+        self.tagger = SequenceTagger.load("ner-multi")
+
+    def transform(self, docs: List[dict]) -> List[dict]:
+        for i in range(len(docs)):
+            paragraphs = docs[i]["_source"]["paragraphs"]
+            entities: List[List[str]] = [[] for _ in range(len(paragraphs))]
+
+            for paragraph in paragraphs:
+                sentence = Sentence(paragraph)
+                self.tagger.predict(sentence)
+                entities.append(
+                    [label.data_point.text for label in sentence.get_labels()]
+                )
+            docs[i]["_source"]["entities"] = entities
+
+        return docs
