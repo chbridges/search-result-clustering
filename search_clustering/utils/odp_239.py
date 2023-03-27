@@ -10,6 +10,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from torch import Tensor, mean, stack
 
 DEFAULT_PATH = str(Path(__file__).parent / "../../datasets/odp-239")
+DEFAULT_EMBEDDINGS = DocumentPoolEmbeddings(WordEmbeddings("en-glove"))
 
 
 def split_target_name(target_name: str) -> str:
@@ -26,24 +27,12 @@ def strip_subtopic_id(subtopic_id: str) -> str:
     return subtopic_id[: subtopic_id.find(".")]
 
 
-def load_odp239(
-    path: str = DEFAULT_PATH, return_topic_ids: bool = True
-) -> Dict[str, Union[list, dict]]:
-    """Returns 1 dataset per category in the ODP-239 dataset. Each dataset is a
-    dict of keys data, target, target_names according to sklearn dataset
-    conventions, but the dtypes are not numpy arrays: data is a list of dict
-    structured like Elasticsearch results, target is a list of int,
-    target_names is a dict with subtopic IDs as keys and (topic, subtopic)
-    tuples as values.
+def read_odp239_to_df(path: str = DEFAULT_PATH) -> pd.DataFrame:
+    """Load and merge all relevant ODP-239 data in dataframe.
 
     :param path: Path to unpacked (?) ODP-239 dataset, ../datasets/odp-239 by default
     :type path: str
-    :param topic_ids: strips subtopic IDs to topic IDs in data[target] to allow coarse-grained evaluation
-    :type return_topic_ids: boolean
-    :returns: Dictionary of category-wise dataset splits with keys data, target, target_names
-    :rtype: Dict[str, Union[list, Dict[str, Tuple[str, str]]]]
     """
-    # Load and merge all relevant ODP-239 data in dataframe
     docs = pd.read_csv(f"{path}/docs.txt", sep="\t", dtype=str).rename(
         columns={"ID": "docID"}
     )
@@ -58,7 +47,24 @@ def load_odp239(
     subtopics.drop(columns=["description"], inplace=True)
 
     strel = pd.read_csv(f"{path}/STRel.txt", sep="\t", dtype=str)
-    df = strel.merge(docs, on="docID").merge(subtopics, on="subTopicID")
+    return strel.merge(docs, on="docID").merge(subtopics, on="subTopicID")
+
+
+def create_odp239_splits(
+    df: pd.DataFrame, return_topic_ids: bool = True
+) -> Dict[str, Union[list, dict]]:
+    """Returns 1 dataset per category in the ODP-239 dataset. Each dataset is a
+    dict of keys data, target, target_names according to sklearn dataset
+    conventions, but the dtypes are not numpy arrays: data is a list of dict
+    structured like Elasticsearch results, target is a list of int,
+    target_names is a dict with subtopic IDs as keys and (topic, subtopic)
+    tuples as values.
+
+    :param topic_ids: strips subtopic IDs to topic IDs in data[target] to allow coarse-grained evaluation
+    :type return_topic_ids: boolean
+    :returns: Dictionary of category-wise dataset splits with keys data, target, target_names
+    :rtype: Dict[str, Union[list, Dict[str, Tuple[str, str]]]]
+    """
 
     # Split dataframe into multiple dataframes, 1 for each category (Arts, Business, ...)
     df_splits: Dict[str, Union[list, dict]] = {}
@@ -100,9 +106,9 @@ def load_odp239(
     return df_splits
 
 
-def embed_odp239_labels(
+def embed_odp239_labels_in_splits(
     data: dict,
-    embeddings: Optional[DocumentPoolEmbeddings] = None,
+    embeddings: Optional[DocumentPoolEmbeddings] = DEFAULT_EMBEDDINGS,
     return_topic_ids: bool = True,
 ) -> Dict[str, Union[list, Dict[str, tuple], Dict[str, Tensor]]]:
     """Add new field target_embeddings to the data splits returned by
@@ -117,9 +123,6 @@ def embed_odp239_labels(
     :returns: Dictionary of category-wise dataset splits with inverse mapping for kNN evaluation
     :rtype: Dict[str, Union[list, Dict[str, tuple], Dict[str, Tensor]]]
     """
-    if embeddings is None:
-        embeddings = DocumentPoolEmbeddings(WordEmbeddings("en-glove"))
-
     embedding_cache = {}
 
     for category in data.keys():
@@ -164,5 +167,6 @@ def score_knn(
 
 
 if __name__ == "__main__":
-    data = load_odp239()
-    data = embed_odp239_labels(data)
+    df = read_odp239_to_df()
+    data = create_odp239_splits(df)
+    data = embed_odp239_labels_in_splits(data)
