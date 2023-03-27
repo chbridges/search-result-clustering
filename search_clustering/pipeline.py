@@ -41,7 +41,7 @@ class KNNPipeline(Pipeline):
         self,
         preprocessing: Union[Preprocessing, List[Preprocessing]],
         embedding: Embedding,
-        reduction: Union[Reduction, List[Reduction]],
+        reduction: Reduction,
         clustering: Union[KNNClustering, TemporalClustering],
         labeling: Labeling,
     ):
@@ -49,7 +49,7 @@ class KNNPipeline(Pipeline):
             preprocessing if isinstance(preprocessing, list) else [preprocessing]
         )
         self.embedding = embedding
-        self.reduction = reduction if isinstance(reduction, list) else [reduction]
+        self.reduction = reduction
         self.clustering = clustering
         self.labeling = labeling
 
@@ -67,8 +67,7 @@ class KNNPipeline(Pipeline):
         vecs = self.embedding.transform(docs)
 
         self.print(f"[3/{steps}] Reducing Dimensionality")
-        for reduction in self.reduction:
-            vecs = reduction.transform(vecs)
+        vecs = self.reduction.transform(vecs)
 
         self.print(f"[4/{steps}] Clustering")
         if isinstance(self.clustering, KNNClustering):
