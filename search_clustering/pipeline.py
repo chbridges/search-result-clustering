@@ -39,13 +39,15 @@ class KNNPipeline(Pipeline):
 
     def __init__(
         self,
-        preprocessing: Preprocessing,
+        preprocessing: Union[Preprocessing, List[Preprocessing]],
         embedding: Embedding,
         reduction: Union[Reduction, List[Reduction]],
         clustering: Union[KNNClustering, TemporalClustering],
         labeling: Labeling,
     ):
-        self.preprocessing = preprocessing
+        self.preprocessing = (
+            preprocessing if isinstance(preprocessing, list) else [preprocessing]
+        )
         self.embedding = embedding
         self.reduction = reduction if isinstance(reduction, list) else [reduction]
         self.clustering = clustering
@@ -58,7 +60,8 @@ class KNNPipeline(Pipeline):
         steps = 5 + visualize
 
         self.print(f"[1/{steps}] Preprocessing")
-        docs = self.preprocessing.transform(docs)
+        for preprocessing in self.preprocessing:
+            docs = preprocessing.transform(docs)
 
         self.print(f"[2/{steps}] Embedding")
         vecs = self.embedding.transform(docs)
