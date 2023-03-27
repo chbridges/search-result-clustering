@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 from typing import List, Union
 
 import numpy as np
-import spacy
 from flair.data import Sentence
 from flair.embeddings import (
     DocumentPoolEmbeddings,
@@ -11,7 +10,7 @@ from flair.embeddings import (
     TransformerDocumentEmbeddings,
 )
 from gensim.models.doc2vec import Doc2Vec, TaggedDocument
-from nltk.tokenize import wordpunct_tokenize
+from nltk.tokenize import word_tokenize
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 
@@ -113,26 +112,18 @@ class Col2Vec(Embedding):
     def transform(self, docs: List[dict]) -> np.ndarray:
         docs_col = [doc["_source"][self.column] for doc in docs]
         tagged_snippets = [
-            TaggedDocument(wordpunct_tokenize(doc), [i])
-            for i, doc in enumerate(docs_col)
+            TaggedDocument(word_tokenize(doc), [i]) for i, doc in enumerate(docs_col)
         ]
         model = Doc2Vec(tagged_snippets, vector_size=self.dim, seed=42, workers=1)
         return np.array([model[i] for i in range(len(tagged_snippets))])
 
 
 class Tfidf(Embedding):
-    """Embed input snippets in TF-IDF vectors."""
+    """Embed input column in TF-IDF vectors."""
+
+    def __init__(self, column: str) -> None:
+        self.column = column
 
     def transform(self, docs: List[dict]) -> np.ndarray:
-        snippets = [doc["snippet"] for doc in docs]
+        snippets = [doc["_source"][self.column] for doc in docs]
         return TfidfVectorizer().fit_transform(snippets).todense()
-
-
-class Nefidf(Embedding):
-    """Embed named entities in TF-IDF vectors."""
-
-    def transform(self, docs: List[dict]) -> np.ndarray:
-        snippets = [doc["_source"]["body"] for doc in docs]
-        ner = spacy.load("en_core_web_sm")
-        entities = [" ".join(map(str, ner(snippet).ents)) for snippet in snippets]
-        return TfidfVectorizer().fit_transform(entities).todense()
