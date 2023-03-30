@@ -1,5 +1,5 @@
 bertopic==0.12.0
-elastic==5.1.0.17
+elasticsearch==8.4.3
 flair==0.11.3
 gensim==4.3.0
 hdbscan==0.8.29
@@ -7,9 +7,9 @@ ijson==3.1.4
 keybert==0.7.0
 matplotlib==3.6.2
 nltk==3.5
+opensearch-py==2.0.0
 pandas==1.5.2
 scikit_learn==1.2.2
 topically==0.0.5
 tqdm==4.64.1
-umap==0.1.1
 umap_learn==0.5.3
