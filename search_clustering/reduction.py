@@ -9,6 +9,9 @@ from umap import UMAP
 class Reduction(ABC):
     """Reduce dimensionality of word embeddings."""
 
+    def __init__(self) -> None:
+        self.n_components = 0
+
     @abstractmethod
     def transform(self, vecs: np.ndarray) -> np.ndarray:
         raise NotImplementedError
@@ -16,9 +19,6 @@ class Reduction(ABC):
 
 class DummyReduction(Reduction):
     """Do nothing."""
-
-    def __init__(self) -> None:
-        self.n_components = ""
 
     def transform(self, vecs: np.ndarray) -> np.ndarray:
         return vecs

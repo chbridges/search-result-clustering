@@ -50,9 +50,7 @@ def read_odp239_to_df(path: str = DEFAULT_PATH) -> pd.DataFrame:
     return strel.merge(docs, on="docID").merge(subtopics, on="subTopicID")
 
 
-def create_odp239_splits(
-    df: pd.DataFrame, return_topic_ids: bool = True
-) -> Dict[str, Union[list, dict]]:
+def create_odp239_splits(df: pd.DataFrame, return_topic_ids: bool = True) -> dict:
     """Returns 1 dataset per category in the ODP-239 dataset. Each dataset is a
     dict of keys data, target, target_names according to sklearn dataset
     conventions, but the dtypes are not numpy arrays: data is a list of dict
@@ -110,7 +108,7 @@ def embed_odp239_labels_in_splits(
     data: dict,
     embeddings: Optional[DocumentPoolEmbeddings] = DEFAULT_EMBEDDINGS,
     return_topic_ids: bool = True,
-) -> Dict[str, Union[list, Dict[str, tuple], Dict[str, Tensor]]]:
+) -> dict:
     """Add new field target_embeddings to the data splits returned by
     load_odp239 that maps topic embeddings to topic IDs.
 
@@ -170,13 +168,7 @@ def align_clusters_by_label(
     return [labels[c] for c in clusters]
 
 
-def subtopic_recall(targets: List[str], aligned_clusters: List[str]) -> float:
+def subtopic_recall(targets: List[str], aligned_clusters: list) -> float:
     unique_targets = set(targets)
     hits = unique_targets.intersection(aligned_clusters)
     return len(hits) / len(unique_targets)
-
-
-if __name__ == "__main__":
-    df = read_odp239_to_df()
-    data = create_odp239_splits(df)
-    data = embed_odp239_labels_in_splits(data)
