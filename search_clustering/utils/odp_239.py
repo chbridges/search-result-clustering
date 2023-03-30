@@ -1,12 +1,12 @@
 from pathlib import Path
-from typing import Dict, Optional, Union
+from typing import Dict, List, Optional, Union
 
 import numpy as np
 import pandas as pd
 from flair.data import Sentence
 from flair.embeddings import DocumentPoolEmbeddings, WordEmbeddings
-from sklearn.metrics import adjusted_rand_score, fowlkes_mallows_score
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import normalize
 from torch import Tensor, mean, stack
 
 DEFAULT_PATH = str(Path(__file__).parent / "../../datasets/odp-239")
@@ -146,24 +146,34 @@ def embed_odp239_labels_in_splits(
     return data
 
 
-def score_knn(
-    data_cat: dict,
-    clusters: np.ndarray,
+def align_clusters_by_label(
+    target_embeddings: Dict[Tensor, str],
     label_embeddings: np.ndarray,
+    clusters: np.ndarray,
     n_neighbors: int = 1,
     weights: str = "uniform",
-) -> float:
+    cosine: bool = True,
+) -> List[int]:
     knn = KNeighborsClassifier(n_neighbors=n_neighbors, weights=weights)
 
-    target_embeddings = data_cat["target_embeddings"]
-    X = np.vstack([embedding.numpy() for embedding in target_embeddings.keys()])
-    y = list(target_embeddings.values())
-    knn.fit(X, y)
+    target_embeddings = target_embeddings
+    X = np.vstack([embedding for embedding in target_embeddings.keys()])
+    y = np.vstack(target_embeddings.values())
 
+    if cosine:
+        X = normalize(X, axis=1)
+        label_embeddings = normalize(label_embeddings, axis=1)
+
+    knn.fit(normalize(X, axis=1), y)
     labels = knn.predict(label_embeddings)
-    predictions = [labels[c] for c in clusters]
+    labels = np.append(labels, -1)  # for density-based algos
+    return [labels[c] for c in clusters]
 
-    return adjusted_rand_score(data_cat["target"], predictions)
+
+def subtopic_recall(targets: List[str], aligned_clusters: List[str]) -> float:
+    unique_targets = set(targets)
+    hits = unique_targets.intersection(aligned_clusters)
+    return len(hits) / len(unique_targets)
 
 
 if __name__ == "__main__":
