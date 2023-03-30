@@ -66,34 +66,23 @@ class Topically(Labeling):
 class FrequentPhrases(Labeling):
     def __init__(
         self,
-        n_phrases: int = 3,
-        column: str = "title",
         language: str = "german",
-        n_gram_max: int = 5,
+        column: str = "title",
+        n_phrases: int = 3,
+        n_gram_max: int = 6,
+        n_candidates: int = 12,
     ) -> None:
+        self.stopwords = stopwords.words(language)
+        self.column = column
         self.n_phrases = n_phrases
         self.n_gram_max = n_gram_max
-        self.column = column
-        self.stopwords = stopwords.words(language)
-
-    def clean_labels(self, labels: List[str]) -> List[str]:
-        """Merge labels and return list without duplicates."""
-        merged_labels = copy(labels)
-
-        for i in range(len(labels)):
-            label_i = labels[i]
-            idx_i = merged_labels.index(label_i)
-
-            for j in range(len(labels)):
-                if i != j and label_i in labels[j]:
-                    merged_labels.pop(idx_i)
-                    break
-
-        return merged_labels
+        self.n_candidates = n_candidates
 
     def fit_predict_cluster(self, docs: List[dict]) -> str:
         token_pattern = r"(?u)\b\w+\b"  # nosec
-        vectorizer = CountVectorizer(ngram_range=(1, 5), token_pattern=token_pattern)
+        vectorizer = CountVectorizer(
+            ngram_range=(1, self.n_gram_max), token_pattern=token_pattern
+        )
         titles = [doc["_source"][self.column] for doc in docs]
 
         counts_per_doc = vectorizer.fit_transform(titles)
@@ -104,7 +93,7 @@ class FrequentPhrases(Labeling):
         frequent_phrases: List[str] = []
 
         for i in argsort_desc:
-            if len(frequent_phrases) == self.n_gram_max:
+            if len(frequent_phrases) == self.n_candidates:
                 break
             phrase = vocabulary[i]
             tokens = word_tokenize(phrase)
@@ -116,6 +105,25 @@ class FrequentPhrases(Labeling):
 
         frequent_phrases = self.clean_labels(frequent_phrases)
         return ", ".join(frequent_phrases[: self.n_phrases])
+
+    def clean_labels(self, labels: List[str]) -> List[str]:
+        """Merge labels and return list without duplicates."""
+        merged_labels = copy(labels)
+
+        for i in range(len(labels)):
+            label_i = labels[i]
+            idx_i = merged_labels.index(label_i)
+
+            for j in range(len(labels)):
+                label_j = labels[j]
+                if i != j and label_i in label_j:
+                    merged_labels.pop(idx_i)
+                    if label_j in merged_labels:
+                        idx_j = merged_labels.index(label_j)
+                        merged_labels.insert(0, merged_labels.pop(idx_j))
+                    break
+
+        return merged_labels
 
 
 class TopicModeling(Labeling):
