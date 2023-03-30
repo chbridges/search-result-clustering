@@ -5,7 +5,6 @@ from typing import List
 
 import numpy as np
 import pandas as pd
-import topically
 from gensim.corpora import Dictionary
 from gensim.models import LdaModel, LsiModel
 from gensim.models.basemodel import BaseTopicModel
@@ -48,8 +47,10 @@ class CountLabeling(Labeling):
 
 class Topically(Labeling):
     def fit_predict(self, docs: List[dict], clusters: np.ndarray) -> List[str]:
+        import topically
+
         counts = [len(np.where(clusters == i)[0]) for i in range(max(clusters) + 1)]
-        app = topically.Topically("Xp3NNCa65nRi8unD4lxtLSWyvng9ZVokoowqzZV5")
+        app = topically.Topically("api-key")
         titles = [doc["_source"]["title"] for doc in docs]
         _, topic_names = app.name_topics((titles, clusters))
         labels = [
