@@ -17,9 +17,7 @@ class Pipeline(ABC):
     verbose = True
 
     @abstractmethod
-    def fit_transform(
-        self, docs: List[dict], visualize: bool, verbose: bool
-    ) -> Tuple[List[dict], np.ndarray, List[str]]:
+    def fit_transform(self, docs: List[dict], visualize: bool, verbose: bool):
         raise NotImplementedError
 
     @abstractmethod
@@ -55,7 +53,7 @@ class KNNPipeline(Pipeline):
 
     def fit_transform(
         self, docs: List[dict], visualize=True, verbose=True, title=""
-    ) -> Tuple[List[dict], np.ndarray, List[str]]:
+    ) -> Tuple[List[dict], np.ndarray, List[str], float]:
         self.verbose = verbose
         steps = 5 + visualize
 
@@ -82,7 +80,7 @@ class KNNPipeline(Pipeline):
             print(f"[6/{steps}] Visualizing")
             self.visualize(vecs, clusters, labels, title)
 
-        return docs, clusters, labels
+        return docs, clusters, labels, score
 
     def visualize(
         self, vecs: np.ndarray, clusters: np.ndarray, labels: list, title: str = ""
