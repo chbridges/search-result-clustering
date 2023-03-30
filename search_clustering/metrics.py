@@ -20,6 +20,13 @@ class Metric(ABC):
         raise NotImplementedError
 
 
+class Silhouette(Metric):
+    """Compute Silhouette score."""
+
+    def compute(self, X: List[np.ndarray], labels: np.ndarray) -> str:
+        return silhouette_score(X, labels)
+
+
 class CalinskiHarabasz(Metric):
     """Computte Calinski-Harabasz score."""
 
@@ -35,10 +42,3 @@ class DaviesBouldin(Metric):
 
     def compute(self, X: List[np.ndarray], labels: np.ndarray) -> str:
         return davies_bouldin_score(X, labels)
-
-
-class Silhouette(Metric):
-    """Compute Silhouette score."""
-
-    def compute(self, X: List[np.ndarray], labels: np.ndarray) -> str:
-        return silhouette_score(X, labels)
