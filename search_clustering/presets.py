@@ -31,9 +31,9 @@ def make_identifier(params):
     classes_trunc["reduction"] = f"{reduction}{n_components}"
 
     classes_sorted = [classes_trunc[ordering[i]] for i in range(len(ordering))]
-    classes_no_dummy = [c for c in classes_sorted if not "Dummy" in c]
+    # classes_no_dummy = [c for c in classes_sorted if not "Dummy" in c]
 
-    return "_".join(classes_no_dummy)
+    return "_".join(classes_sorted)
 
 
 def make_pipelines(params: Union[Params, dict]):
