@@ -29,8 +29,9 @@ class TransformerEmbedding(Embedding):
         SentenceTransformerDocumentEmbeddings, TransformerDocumentEmbeddings
     ]
 
-    def __init__(self, key: str = "body") -> None:
+    def __init__(self, key: str = "body", use_cache: bool = False) -> None:
         self.key = key
+        self.use_cache = use_cache
 
     def tokenize(self, doc):
         return Sentence(doc["_source"][self.key])
@@ -43,9 +44,12 @@ class TransformerEmbedding(Embedding):
             tokenized_docs = list(pool.imap(self.tokenize, docs, chunksize=8))
         self.embedding_model.embed(tokenized_docs)
 
-        embeddings = np.vstack([doc.embedding for doc in tokenized_docs])
-        for i in range(len(docs)):
-            docs[i]["_source"]["embedding"] = embeddings[i]
+        embeddings = np.vstack([doc.embedding.cpu() for doc in tokenized_docs])
+
+        if self.use_cache:
+            for i in range(len(docs)):
+                docs[i]["_source"]["embedding"] = embeddings[i]
+
         return embeddings
 
 
@@ -53,7 +57,7 @@ class DistilBERT(TransformerEmbedding):
     """Embed input documents in DistilBERT document embeddings and crash my
     laptop."""
 
-    def __init__(self, key: str = "body") -> None:
+    def __init__(self, key: str = "body", use_cache: bool = False) -> None:
         super().__init__(key)
         self.embedding_model = TransformerDocumentEmbeddings(
             "bert-base-german-cased", fine_tune=False
@@ -63,7 +67,7 @@ class DistilBERT(TransformerEmbedding):
 class SentenceMiniLM(TransformerEmbedding):
     """Embed input documents in sentence MiniLM document embeddings."""
 
-    def __init__(self, key: str = "body") -> None:
+    def __init__(self, key: str = "body", use_cache: bool = False) -> None:
         super().__init__(key)
         self.embedding_model = SentenceTransformerDocumentEmbeddings(
             "paraphrase-multilingual-MiniLM-L12-v2"
@@ -92,7 +96,7 @@ class ParagraphPoolEmbeddings(Embedding):
 
         tokenized_paragraphs = [Sentence(p) for p in paragraphs]
         tokenized_paragraphs = self.embedding_model.embed(tokenized_paragraphs)
-        embeddings = np.vstack([p.embedding for p in tokenized_paragraphs])
+        embeddings = np.vstack([p.embedding.cpu() for p in tokenized_paragraphs])
         weighted_embeddings = weights[:, np.newaxis] * embeddings
         return np.sum(weighted_embeddings, axis=0)
 

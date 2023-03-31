@@ -49,7 +49,7 @@ for identifier, pipeline in tqdm(pipelines.items(), desc="Pipelines"):
         ari = adjusted_rand_score(data[cat]["target"], clusters)
 
         label_embeddings = np.vstack(
-            [embed_target_name(label, DEFAULT_EMBEDDINGS) for label in labels]
+            [embed_target_name(label, DEFAULT_EMBEDDINGS).cpu() for label in labels]
         )
         aligned_clusters = align_clusters_by_label(
             data[cat]["target_embeddings"], label_embeddings, clusters, n_neighbors=1
