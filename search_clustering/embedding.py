@@ -59,7 +59,7 @@ class DistilBERT(TransformerEmbedding):
     laptop."""
 
     def __init__(self, key: str = "body", use_cache: bool = False) -> None:
-        super().__init__(key)
+        super().__init__(key, use_cache)
         self.embedding_model = TransformerDocumentEmbeddings(
             "distilbert-base-multilingual-cased", fine_tune=False
         )
@@ -69,7 +69,7 @@ class SentenceMiniLM(TransformerEmbedding):
     """Embed input documents in sentence MiniLM document embeddings."""
 
     def __init__(self, key: str = "body", use_cache: bool = False) -> None:
-        super().__init__(key)
+        super().__init__(key, use_cache)
         self.embedding_model = SentenceTransformerDocumentEmbeddings(
             "paraphrase-multilingual-MiniLM-L12-v2"
         )
