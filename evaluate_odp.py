@@ -22,13 +22,18 @@ from search_clustering.utils.odp_239 import (
 def evaluate(data: dict, params: dict):
     pipelines = make_pipelines(params)
 
-    results: Dict[str, List[float]] = {
+    results: Dict[str, List[str]] = {
         "id": [],
         "silhouette": [],
+        "silhouette_std": [],
         "ari": [],
+        "ari_std": [],
         "recall": [],
+        "recall_std": [],
         "outliers": [],
+        "outliers_std": [],
         "time": [],
+        "time_std": [],
     }
 
     for identifier, pipeline in tqdm(pipelines.items(), desc="Pipelines"):
@@ -63,14 +68,19 @@ def evaluate(data: dict, params: dict):
             ari_pipe.append(ari)
             recall_pipe.append(recall)
             outliers_pipe.append(outliers)
-            time_pipe.append(delta.seconds)
+            time_pipe.append(delta.total_seconds())
+
+        def make_str(values: List[float]) -> str:
+            mean = round(np.mean(values), 2)
+            std = round(np.std(values), 2)
+            return f"{mean} ± {std}"
 
         results["id"].append(identifier)
-        results["silhouette"].append(float(np.mean(silhouette_pipe)))
-        results["ari"].append(np.mean(ari_pipe))
-        results["recall"].append(np.mean(recall_pipe))
-        results["outliers"].append(np.mean(outliers_pipe))
-        results["time"].append(np.mean(time_pipe))
+        results["silhouette"].append(make_str(silhouette_pipe))
+        results["ari"].append(make_str(ari_pipe))
+        results["recall"].append(make_str(recall_pipe))
+        results["outliers"].append(make_str(outliers_pipe))
+        results["time"].append(make_str(time_pipe))
 
         return results
 
