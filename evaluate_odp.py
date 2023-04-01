@@ -75,8 +75,8 @@ def evaluate(data: dict, params: dict):
         return results
 
 
-def read_results(filename: str = "evaluation_odp.json") -> pd.DataFrame:
-    with open(filename, "r") as f:
+def read_results(filename: str = f"evaluation_odp.json") -> pd.DataFrame:
+    with open(f"results/{filename}", "r") as f:
         results = json.loads(f.read())
 
     # preprocessing and labeling equal for all pipelines, remove
@@ -92,7 +92,7 @@ def read_results(filename: str = "evaluation_odp.json") -> pd.DataFrame:
         split.to_list(), columns=["embedding", "reduction", "clustering"]
     )
     df.index = pd.MultiIndex.from_frame(split[["embedding", "clustering", "reduction"]])
-    df.sort_index(level=["embedding"])
+    df = df.sort_index(level=["embedding"])
 
     return df.drop(columns=["id"])
 
@@ -104,5 +104,5 @@ if __name__ == "__main__":
 
     results = evaluate(data, params_odp)
 
-    with open("evaluation_odp.json", "w") as f:
+    with open("results/evaluation_odp.json", "w") as f:
         f.write(json.dumps(results, indent=2))
