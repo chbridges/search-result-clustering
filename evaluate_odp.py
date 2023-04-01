@@ -25,15 +25,10 @@ def evaluate(data: dict, params: dict):
     results: Dict[str, List[str]] = {
         "id": [],
         "silhouette": [],
-        "silhouette_std": [],
         "ari": [],
-        "ari_std": [],
         "recall": [],
-        "recall_std": [],
         "outliers": [],
-        "outliers_std": [],
         "time": [],
-        "time_std": [],
     }
 
     for identifier, pipeline in tqdm(pipelines.items(), desc="Pipelines"):
@@ -69,10 +64,11 @@ def evaluate(data: dict, params: dict):
             recall_pipe.append(recall)
             outliers_pipe.append(outliers)
             time_pipe.append(delta.total_seconds())
+            break
 
         def make_str(values: List[float]) -> str:
-            mean = round(np.mean(values), 2)
-            std = round(np.std(values), 2)
+            mean = round(float(np.mean(values)), 2)
+            std = round(float(np.std(values)), 2)
             return f"{mean} ± {std}"
 
         results["id"].append(identifier)
@@ -82,7 +78,7 @@ def evaluate(data: dict, params: dict):
         results["outliers"].append(make_str(outliers_pipe))
         results["time"].append(make_str(time_pipe))
 
-        return results
+    return results
 
 
 def read_results(filename: str = f"evaluation_odp.json") -> pd.DataFrame:
