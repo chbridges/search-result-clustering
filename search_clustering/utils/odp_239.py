@@ -155,7 +155,7 @@ def align_clusters_by_label(
     knn = KNeighborsClassifier(n_neighbors=n_neighbors, weights=weights)
 
     target_embeddings = target_embeddings
-    X = np.vstack([embedding for embedding in target_embeddings.keys()])
+    X = np.vstack([embedding.cpu() for embedding in target_embeddings.keys()])
     y = np.vstack(target_embeddings.values())
 
     if cosine:
