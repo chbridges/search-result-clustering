@@ -49,15 +49,15 @@ def make_pipelines(params: Union[Params, dict]):
 
 params_odp = {
     "preprocessing": [ColumnMerger(["title", "snippet"])],
-    "embedding": [Col2Vec("merged"), SentenceMiniLM("merged")],
-    "reduction": [DummyReduction(), Umap(32), Umap(16), Umap(8)],
+    "embedding": [Doc2Vec("merged"), DistilBERT("merged"), SentenceMiniLM("merged")],
+    "reduction": [DummyReduction(), Umap(32), Umap(8)],
     "clustering": [KMeans(), HierarchicalClustering(), OPTICS(), HDBSCAN()],
     "labeling": [FrequentPhrases("english")],
 }
 
 params_test = {
     "preprocessing": [ColumnMerger(["title", "snippet"])],
-    "embedding": [Col2Vec("merged")],
+    "embedding": [Doc2Vec("merged")],
     "reduction": [Umap(8)],
     "clustering": [KMeans(), HDBSCAN()],
     "labeling": [FrequentPhrases("english")],
