@@ -9,8 +9,7 @@ from flair.embeddings import (
     SentenceTransformerDocumentEmbeddings,
     TransformerDocumentEmbeddings,
 )
-from gensim.models.doc2vec import Doc2Vec as D2V
-from gensim.models.doc2vec import TaggedDocument
+from gensim.models.doc2vec import Doc2Vec, TaggedDocument
 from nltk.tokenize import word_tokenize
 from sklearn.feature_extraction.text import TfidfVectorizer
 
@@ -107,7 +106,7 @@ class ParagraphPoolEmbeddings(Embedding):
         return np.vstack(embeddings)
 
 
-class Doc2Vec(Embedding):
+class Col2Vec(Embedding):
     """Embed input snippets in Doc2Vec vectors."""
 
     def __init__(self, column: str, dim: int = 100) -> None:
@@ -119,7 +118,7 @@ class Doc2Vec(Embedding):
         tagged_snippets = [
             TaggedDocument(word_tokenize(doc), [i]) for i, doc in enumerate(docs_col)
         ]
-        model = D2V(tagged_snippets, vector_size=self.dim, seed=42, workers=1)
+        model = Doc2Vec(tagged_snippets, vector_size=self.dim, seed=42, workers=1)
         return np.array([model[i] for i in range(len(tagged_snippets))])
 
 
