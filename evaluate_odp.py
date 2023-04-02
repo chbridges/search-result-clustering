@@ -64,7 +64,6 @@ def evaluate(data: dict, params: dict):
             recall_pipe.append(recall)
             outliers_pipe.append(outliers)
             time_pipe.append(delta.total_seconds())
-            break
 
         def make_str(values: List[float]) -> str:
             mean = round(float(np.mean(values)), 2)
