@@ -50,15 +50,31 @@ def make_pipelines(params: Union[Params, dict]):
 params_odp = {
     "preprocessing": [ColumnMerger(["title", "snippet"])],
     "embedding": [Col2Vec("merged"), SentenceMiniLM("merged")],
-    "reduction": [DummyReduction(), Umap(32), Umap(8)],
+    "reduction": [DummyReduction(), Umap(8)],
     "clustering": [KMeans(), HierarchicalClustering(), DBSCAN(), HDBSCAN()],
     "labeling": [FrequentPhrases("english")],
 }
 
-params_test = {
+params_odp_caching = {
     "preprocessing": [ColumnMerger(["title", "snippet"])],
-    "embedding": [Col2Vec("merged")],
+    "embedding": [SentenceMiniLM("merged", use_cache=True)],
     "reduction": [Umap(8)],
-    "clustering": [KMeans(), HDBSCAN()],
+    "clustering": [DummyClustering(), DBSCAN()],
     "labeling": [FrequentPhrases("english")],
 }
+
+
+odp_kmeans = KNNPipeline(
+    ColumnMerger(["title", "snippet"]),
+    Col2Vec("merged"),
+    DummyReduction(),
+    KMeans(),
+    FrequentPhrases("english"),
+)
+odp_dbscan = KNNPipeline(
+    ColumnMerger(["title", "snippet"]),
+    SentenceMiniLM("merged", use_cache=True),
+    Umap(8),
+    DBSCAN(),
+    FrequentPhrases("english"),
+)
