@@ -40,7 +40,7 @@ class TransformerEmbedding(Embedding):
         if "embedding" in docs[0]["_source"].keys():
             return np.vstack([doc["_source"]["embedding"] for doc in docs])
 
-        with multiprocessing.pool.Pool() as pool:
+        with multiprocessing.pool.ThreadPool() as pool:
             tokenized_docs = list(pool.imap(self.tokenize, docs, chunksize=8))
         self.embedding_model.embed(tokenized_docs)
 
@@ -101,7 +101,7 @@ class ParagraphPoolEmbeddings(Embedding):
         return np.sum(weighted_embeddings, axis=0)
 
     def transform(self, docs: List[dict]) -> np.ndarray:
-        with multiprocessing.pool.Pool() as pool:
+        with multiprocessing.pool.ThreadPool() as pool:
             embeddings = list(pool.imap(self.embed, docs, chunksize=8))
         return np.vstack(embeddings)
 
