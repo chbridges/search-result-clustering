@@ -79,7 +79,7 @@ class ParagraphSplitter(Preprocessing):
         return doc
 
     def transform(self, docs: List[dict]) -> List[dict]:
-        with multiprocessing.pool.ThreadPool() as pool:
+        with multiprocessing.pool.Pool() as pool:
             return list(pool.imap(self.add_paragraphs_and_weights, docs, chunksize=8))
 
 
@@ -116,7 +116,7 @@ class ParagraphKeyphraseExtractor(Preprocessing):
         return doc
 
     def transform(self, docs: List[dict]) -> List[dict]:
-        with multiprocessing.pool.ThreadPool() as pool:
+        with multiprocessing.pool.Pool() as pool:
             return list(pool.imap(self.add_topics, docs, chunksize=8))
 
 
@@ -146,7 +146,7 @@ class ParagraphTopicPreprocessor(Preprocessing):
         return doc
 
     def transform(self, docs: List[dict]) -> List[dict]:
-        with multiprocessing.pool.ThreadPool() as pool:
+        with multiprocessing.pool.Pool() as pool:
             return list(pool.imap(self.add_topics, docs, chunksize=8))
 
 
