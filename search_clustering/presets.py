@@ -55,11 +55,11 @@ params_odp = {
     "labeling": [FrequentPhrases("english")],
 }
 
-params_odp_caching = {
+params_odp_densmap = {
     "preprocessing": [ColumnMerger(["title", "snippet"])],
-    "embedding": [SentenceMiniLM("merged", use_cache=True)],
-    "reduction": [Umap(8)],
-    "clustering": [DummyClustering(), DBSCAN()],
+    "embedding": [Col2Vec("merged"), SentenceMiniLM("merged")],
+    "reduction": [Umap(8, densmap=True)],
+    "clustering": [HDBSCAN()],
     "labeling": [FrequentPhrases("english")],
 }
 

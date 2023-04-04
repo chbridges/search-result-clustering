@@ -7,7 +7,7 @@ import pandas as pd
 from sklearn.metrics import adjusted_rand_score
 from tqdm import tqdm
 
-from search_clustering.presets import make_pipelines, params_odp
+from search_clustering.presets import make_pipelines, params_odp, params_odp_densmap
 from search_clustering.utils.odp_239 import (
     DEFAULT_EMBEDDINGS,
     align_clusters_by_label,
@@ -107,7 +107,7 @@ if __name__ == "__main__":
     data = create_odp239_splits(df)
     data = embed_odp239_labels_in_splits(data)
 
-    results = evaluate(data, params_odp)
+    results = evaluate(data, params_odp_densmap)
 
-    with open("results/evaluation_odp.json", "w") as f:
+    with open("results/evaluation_odp_densmap.json", "w") as f:
         f.write(json.dumps(results, indent=2))
