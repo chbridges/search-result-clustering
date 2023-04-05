@@ -55,6 +55,14 @@ params_odp = {
     "labeling": [FrequentPhrases("english")],
 }
 
+params_odp_caching = {
+    "preprocessing": [ColumnMerger(["title", "snippet"])],
+    "embedding": [SentenceMiniLM("merged", use_cache=True)],
+    "reduction": [Umap(8)],
+    "clustering": [DummyClustering(), DBSCAN()],
+    "labeling": [FrequentPhrases("english")],
+}
+
 params_odp_densmap = {
     "preprocessing": [ColumnMerger(["title", "snippet"])],
     "embedding": [Col2Vec("merged"), SentenceMiniLM("merged")],
@@ -62,7 +70,6 @@ params_odp_densmap = {
     "clustering": [HDBSCAN()],
     "labeling": [FrequentPhrases("english")],
 }
-
 
 odp_doc2vec = KNNPipeline(
     ColumnMerger(["title", "snippet"]),
