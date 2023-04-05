@@ -64,17 +64,34 @@ params_odp_densmap = {
 }
 
 
-odp_kmeans = KNNPipeline(
+odp_doc2vec = KNNPipeline(
     ColumnMerger(["title", "snippet"]),
     Col2Vec("merged"),
     DummyReduction(),
     KMeans(),
     FrequentPhrases("english"),
 )
+
+odp_kmeans = KNNPipeline(
+    ColumnMerger(["title", "snippet"]),
+    SentenceMiniLM("merged", use_cache=True),
+    Umap(8),
+    KMeans(),
+    FrequentPhrases("english"),
+)
+
 odp_dbscan = KNNPipeline(
     ColumnMerger(["title", "snippet"]),
     SentenceMiniLM("merged", use_cache=True),
     Umap(8),
     DBSCAN(),
     FrequentPhrases("english"),
+)
+
+odp_hdbscan = KNNPipeline(
+    ColumnMerger(["title", "snippet"]),
+    SentenceMiniLM("merged", use_cache=True),
+    Umap(8),
+    HDBSCAN(),
+    FrequentPhrases("english", n_phrases=1),
 )
