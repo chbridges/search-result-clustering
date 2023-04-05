@@ -121,8 +121,6 @@ def embed_odp239_labels_in_splits(
     :returns: Dictionary of category-wise dataset splits with inverse mapping for kNN evaluation
     :rtype: Dict[str, Union[list, Dict[str, tuple], Dict[str, Tensor]]]
     """
-    embedding_cache = {}
-
     for category in data.keys():
         data[category]["target_embeddings"] = {}
         target_names = data[category]["target_names"]
@@ -131,14 +129,9 @@ def embed_odp239_labels_in_splits(
             if return_topic_ids:
                 subtopic_id = strip_subtopic_id(subtopic_id)
 
-            for label in topic_subtopic:
-                if label not in embedding_cache:
-                    embedding_cache[label] = embed_target_name(label, embeddings)
+            label = " ".join(topic_subtopic)
+            target_name_embedding = embed_target_name(label, embeddings)
 
-            topic, subtopic = topic_subtopic
-            target_name_embedding = mean(
-                stack([embedding_cache[topic], embedding_cache[subtopic]]), 0
-            )
             data[category]["target_embeddings"][target_name_embedding] = subtopic_id
 
     return data
