@@ -1,4 +1,5 @@
 from abc import ABC
+from collections import Counter
 from copy import copy
 from string import punctuation
 from typing import List
@@ -28,7 +29,8 @@ class Labeling(ABC):
             for cluster in clustered_docs
         ]
         if -1 in clusters:
-            labels.append("other")
+
+            labels.append(f"other ({Counter(clusters)[-1]})")
         return labels
 
 
