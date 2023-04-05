@@ -93,5 +93,5 @@ odp_hdbscan = KNNPipeline(
     SentenceMiniLM("merged", use_cache=True),
     Umap(8),
     HDBSCAN(),
-    FrequentPhrases("english", n_phrases=1),
+    FrequentPhrases("english", n_phrases=2),
 )
