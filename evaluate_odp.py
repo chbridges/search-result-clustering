@@ -2,21 +2,16 @@ import json
 from datetime import datetime
 from typing import Dict, List
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from sklearn.linear_model import LinearRegression
 from sklearn.metrics import adjusted_rand_score
 from tqdm import tqdm
 
-from search_clustering.presets import make_pipelines, params_odp, params_odp_densmap
-from search_clustering.utils.odp_239 import (
-    DEFAULT_EMBEDDINGS,
-    align_clusters_by_label,
-    create_odp239_splits,
-    embed_odp239_labels_in_splits,
-    embed_target_name,
-    read_odp239_to_df,
-    subtopic_recall,
-)
+from search_clustering.pipeline import KNNPipeline
+from search_clustering.presets import *
+from search_clustering.utils.odp_239 import *
 
 
 def evaluate(data: dict, params: dict):
@@ -78,6 +73,71 @@ def evaluate(data: dict, params: dict):
         results["time"].append(make_str(time_pipe))
 
     return results
+
+
+def evaluate_detailed(data: dict, pipeline: KNNPipeline) -> pd.DataFrame:
+    category = []
+    support = []
+    n_clusters = []
+    ari = []
+    recall = []
+
+    for cat in data.keys():
+        _, clusters, labels, _ = pipeline.fit_transform(
+            data[cat]["data"], verbose=False, visualize=False
+        )
+
+        label_embeddings = np.vstack(
+            [embed_target_name(label, DEFAULT_EMBEDDINGS).cpu() for label in labels]
+        )
+        aligned_clusters = align_clusters_by_label(
+            data[cat]["target_embeddings"],
+            label_embeddings,
+            clusters,
+            n_neighbors=1,
+        )
+
+        category.append(cat)
+        support.append(len(data[cat]["data"]))
+        n_clusters.append(max(clusters) + 1)
+        ari.append(adjusted_rand_score(data[cat]["target"], clusters))
+        recall.append(subtopic_recall(data[cat]["target"], aligned_clusters))
+
+    return pd.DataFrame(
+        {
+            "category": category,
+            "support": support,
+            "n_clusters": n_clusters,
+            "ari": ari,
+            "recall": recall,
+        }
+    )
+
+
+def plot_correlations(df: pd.DataFrame, title: str = ""):
+    df["n_clusters"] /= df["n_clusters"].max()
+    corr = df.corr()["support"]
+    x = np.linspace(df["support"].min(), df["support"].max(), num=2).reshape(-1, 1)
+    lr = LinearRegression()
+
+    fig, ax = plt.subplots(figsize=(5, 5))
+
+    labels = {"n_clusters": "#Clusters", "ari": "ARI", "recall": "Recall"}
+
+    for col in corr.index[1:]:
+        lr.fit(df["support"].to_numpy().reshape(-1, 1), df[col])
+        ax.scatter(df["support"], df[col], alpha=0.75)
+        ax.plot(
+            x,
+            lr.predict(x),
+            linestyle="dashed",
+            label=rf"{labels[col]}, $\rho = {corr[col]:.4f}$",
+        )
+
+    ax.set_xlabel("Number of Documents")
+    ax.legend(loc="upper left")
+    ax.set_title(title)
+    fig.show()
 
 
 def read_results(filename: str = f"evaluation_odp.json") -> pd.DataFrame:
