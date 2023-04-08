@@ -21,7 +21,10 @@ class Labeling(ABC):
     def fit_predict_cluster(self, docs: List[dict]) -> str:
         raise NotImplementedError
 
-    def fit_predict(self, docs: List[dict], clusters: np.ndarray) -> List[str]:
+    def fit_predict(
+        self, docs: List[dict], clusters: np.ndarray, query: str = ""
+    ) -> List[str]:
+        self.query = query
         cluster_indices = [np.where(clusters == i) for i in range(max(clusters) + 1)]
         clustered_docs = [[docs[i] for i in cluster[0]] for cluster in cluster_indices]
         labels = [
@@ -49,7 +52,9 @@ class CountLabeling(Labeling):
 
 
 class Topically(Labeling):
-    def fit_predict(self, docs: List[dict], clusters: np.ndarray) -> List[str]:
+    def fit_predict(
+        self, docs: List[dict], clusters: np.ndarray, query: str = ""
+    ) -> List[str]:
         counts = [len(np.where(clusters == i)[0]) for i in range(max(clusters) + 1)]
         app = topically.Topically("api-key")
         titles = [doc["_source"]["title"] for doc in docs]
@@ -98,6 +103,8 @@ class FrequentPhrases(Labeling):
             if len(frequent_phrases) == self.n_candidates:
                 break
             phrase = vocabulary[i]
+            if phrase in self.query.split(" "):
+                continue
             tokens = word_tokenize(phrase)
             if tokens[0] not in self.stopwords and tokens[-1] not in self.stopwords:
                 frequent_phrases.append(phrase)
