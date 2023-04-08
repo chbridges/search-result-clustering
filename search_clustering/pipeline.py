@@ -52,7 +52,7 @@ class KNNPipeline(Pipeline):
         self.labeling = labeling
 
     def fit_transform(
-        self, docs: List[dict], visualize=True, verbose=True, title=""
+        self, docs: List[dict], visualize=True, verbose=True, title="", query=""
     ) -> Tuple[List[dict], np.ndarray, List[str], float]:
         self.verbose = verbose
         steps = 5 + visualize
@@ -74,7 +74,7 @@ class KNNPipeline(Pipeline):
             clusters = self.clustering.fit_predict(docs)
 
         self.print(f"[5/{steps}] Labeling")
-        labels = self.labeling.fit_predict(docs, clusters)
+        labels = self.labeling.fit_predict(docs, clusters, query)
 
         if visualize:
             print(f"[6/{steps}] Visualizing")
