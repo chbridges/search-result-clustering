@@ -3,13 +3,14 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 
 import numpy as np
+import spacy
 from bertopic import BERTopic
 from flair.data import Sentence
 from flair.models import SequenceTagger
 from gensim.models.doc2vec import Doc2Vec, TaggedDocument
 from keybert import KeyBERT
 from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
+from nltk.tokenize import sent_tokenize, word_tokenize
 from sklearn.feature_extraction.text import CountVectorizer
 
 
@@ -153,15 +154,14 @@ class ParagraphTopicPreprocessor(Preprocessing):
 class NER(Preprocessing):
     """Extract named entities from a given column."""
 
-    def _init__(self, column: str = "body") -> None:
+    def __init__(self, column: str = "body") -> None:
         self.column = column
-        self.tagger = SequenceTagger.load("ner-multi")  # EN, DE, NL, ES
+        self.tagger = spacy.load("xx_ent_wiki_sm")
 
     def transform(self, docs: List[dict]) -> List[dict]:
         for i in range(len(docs)):
-            sentence = Sentence(docs[i]["_source"][self.column])
-            self.tagger.predict(sentence)
-            entities = [label.data_point.text for label in sentence.get_labels()]
+            tagged_doc = self.tagger(docs[i]["_source"][self.column])
+            entities = [ent.text for ent in tagged_doc.ents]
             docs[i]["_source"]["entities"] = ", ".join(entities)
         return docs
 
