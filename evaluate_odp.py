@@ -10,8 +10,16 @@ from sklearn.metrics import adjusted_rand_score
 from tqdm import tqdm
 
 from search_clustering.pipeline import KNNPipeline
-from search_clustering.presets import *
-from search_clustering.utils.odp_239 import *
+from search_clustering.presets import get_odp_params, make_pipelines
+from search_clustering.utils.odp_239 import (
+    DEFAULT_EMBEDDINGS,
+    align_clusters_by_label,
+    create_odp239_splits,
+    embed_odp239_labels_in_splits,
+    embed_target_name,
+    read_odp239_to_df,
+    subtopic_recall,
+)
 
 
 def evaluate(data: dict, params: dict):
@@ -167,7 +175,7 @@ if __name__ == "__main__":
     data = create_odp239_splits(df)
     data = embed_odp239_labels_in_splits(data)
 
-    results = evaluate(data, params_odp_densmap)
+    results = evaluate(data, get_odp_params())
 
-    with open("results/evaluation_odp_densmap.json", "w") as f:
+    with open("results/evaluation_odp.json", "w") as f:
         f.write(json.dumps(results, indent=2))
