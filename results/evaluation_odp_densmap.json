@@ -1,0 +1,26 @@
+{
+  "id": [
+    "ColumnMerger_Col2Vec_Umap8_HDBSCAN_FrequentPhrases",
+    "ColumnMerger_SentenceMiniLM_Umap8_HDBSCAN_FrequentPhrases"
+  ],
+  "silhouette": [
+    "0.26 \u00b1 0.15",
+    "0.26 \u00b1 0.27"
+  ],
+  "ari": [
+    "0.07 \u00b1 0.06",
+    "0.12 \u00b1 0.12"
+  ],
+  "recall": [
+    "0.24 \u00b1 0.27",
+    "0.32 \u00b1 0.22"
+  ],
+  "outliers": [
+    "0.17 \u00b1 0.14",
+    "0.29 \u00b1 0.23"
+  ],
+  "time": [
+    "23.26 \u00b1 10.65",
+    "368.66 \u00b1 205.62"
+  ]
+}
