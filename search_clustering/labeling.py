@@ -1,16 +1,12 @@
+import importlib
 from abc import ABC
 from collections import Counter
 from copy import copy
-from string import punctuation
 from typing import List
 
 import numpy as np
 import pandas as pd
 import topically
-from gensim.corpora import Dictionary
-from gensim.models import LdaModel, LsiModel
-from gensim.models.basemodel import BaseTopicModel
-from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from sklearn.feature_extraction.text import CountVectorizer
 
@@ -73,13 +69,13 @@ class Topically(Labeling):
 class FrequentPhrases(Labeling):
     def __init__(
         self,
-        language: str = "german",
+        language: str = "en",
         column: str = "title",
         n_phrases: int = 3,
         n_gram_max: int = 6,
         n_candidates: int = 12,
     ) -> None:
-        self.stopwords = stopwords.words(language)
+        self.stopwords = importlib.import_module(f"spacy.lang.{language}").STOP_WORDS
         self.column = column
         self.n_phrases = n_phrases
         self.n_gram_max = n_gram_max
@@ -103,8 +99,6 @@ class FrequentPhrases(Labeling):
             if len(frequent_phrases) == self.n_candidates:
                 break
             phrase = vocabulary[i]
-            if phrase in self.query.split(" "):
-                continue
             tokens = word_tokenize(phrase)
             if tokens[0] not in self.stopwords and tokens[-1] not in self.stopwords:
                 frequent_phrases.append(phrase)
@@ -112,8 +106,10 @@ class FrequentPhrases(Labeling):
         if len(frequent_phrases) == 0:
             return vocabulary[argsort_desc[0]]
 
-        frequent_phrases = self.clean_labels(frequent_phrases)
-        return ", ".join(frequent_phrases[: self.n_phrases])
+        cleaned_phrases = self.clean_labels(frequent_phrases)
+        cleaned_sorted = [p for p in frequent_phrases if p in cleaned_phrases]
+
+        return ", ".join(cleaned_sorted[: self.n_phrases])
 
     def clean_labels(self, labels: List[str]) -> List[str]:
         """Merge labels and return list without duplicates."""
@@ -132,36 +128,7 @@ class FrequentPhrases(Labeling):
                         merged_labels.insert(0, merged_labels.pop(idx_j))
                     break
 
-        return merged_labels
-
-
-class TopicModeling(Labeling):
-    """Return topics using Latent Semantic Indexing."""
-
-    model: BaseTopicModel
-
-    def tokenize(self, doc: str) -> List[str]:
-        tokens = word_tokenize(doc)
-        tokens = [t for t in tokens if t not in stopwords.words("german")]
-        return [t for t in tokens if t not in punctuation]
-
-    def fit_predict_cluster(self, docs: List[dict]) -> str:
-        corpus_str = [self.tokenize(doc["snippet"]) for doc in docs]
-        id2word = Dictionary(corpus_str)
-        corpus_vec = [id2word.doc2bow(doc) for doc in corpus_str]
-        topic_vecs = self.model(corpus_vec, id2word=id2word).get_topics()
-        argmax = np.argmax(topic_vecs, axis=1)
-        return ", ".join(set([id2word[topic] for topic in argmax]))
-
-
-class LSI(TopicModeling):
-    def __init__(self) -> None:
-        self.model = LsiModel
-
-
-class LDA(TopicModeling):
-    def __init__(self) -> None:
-        self.model = LdaModel
+        return [label for label in merged_labels if label not in self.query.split(" ")]
 
 
 class TemporalLabeling(Labeling):
