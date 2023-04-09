@@ -12,7 +12,8 @@ commands: str = """
     query [-t] <q>: query and cluster documents for query q, -t for temporal clustering
     cluster [-t] <c>: hierarchically cluster the cluster with index c, -t for temporal clustering
     list <c>: list the documents in the cluster with index c
-    show <d>: show the document with ID d
+    show <d>: print the formatted document with ID d
+    detail <d>: print the entire document with ID d including all metadata
     quit: self-explanatory
     """
 
@@ -22,7 +23,10 @@ cache: dict = {"D_q": None, "clusters": None, "labels": None, "query": None}
 def filter_cache(c: str):
     if cache["D_q"] == None:
         print("Query documents first")
-    return [cache["D_q"][i] for i in np.where(cache["clusters"] == int(c))[0]]
+    idx = int(c)
+    if idx == max(cache["clusters"]) + 1:
+        idx = -1
+    return [cache["D_q"][i] for i in np.where(cache["clusters"] == idx)[0]]
 
 
 def list_cluster(D_c: List[dict]) -> None:
@@ -46,14 +50,22 @@ def show(_id: str) -> None:
     print("Invalid ID")
 
 
+def detail(_id: str) -> None:
+    for doc in cache["D_q"]:
+        if doc["_id"] == _id:
+            print(doc)
+            return
+    print("Invalid ID")
+
+
 def cluster_knn(D: List[dict]) -> None:
     if len(D) >= 8:
         docs, clusters, labels, _ = pipe_knn.fit_transform(
-            D, visualize=False, query=cache["query"]
+            D, verbose=True, visualize=False, query=cache["query"]
         )
     elif len(D) > 0:
         docs, clusters, labels, _ = pipe_none.fit_transform(
-            D, visualize=False, query=cache["query"]
+            D, verbose=False, visualize=False, query=cache["query"]
         )
     else:
         return
@@ -69,7 +81,8 @@ def cluster_temp(D) -> None:
 
 def query(q, temporal=False) -> None:
     cache["query"] = q
-    D_q = es.search(q, size=100)
+    results = es.search(q, size=10_000)
+    D_q = [res for res in results if "\n" in res["_source"]["body"]][:500]
     print("Retrieved", len(D_q), "results")
     if len(D_q) == 0:
         return
@@ -86,10 +99,10 @@ def parse_input(inp_str: str = ""):
 
     func = inp.pop(0)
 
-    if len(inp) == 0 and func != "quit":
-        func = "error"
+    if func == "quit":
+        exit()
 
-    if func == "help":
+    elif func == "help":
         print(commands)
 
     elif func == "query":
@@ -115,8 +128,9 @@ def parse_input(inp_str: str = ""):
         if len(inp) == 1:
             show(inp[0])
 
-    elif func == "quit":
-        exit()
+    elif func == "detail":
+        if len(inp) == 1:
+            detail(inp[0])
 
     elif func == "cache":
         print(cache)
@@ -126,6 +140,7 @@ def parse_input(inp_str: str = ""):
 
 
 if __name__ == "__main__":
+    print("Connected to http://localhost:9200")
     print("Type 'help' to see all available commands")
     while True:
         parse_input(input("> "))
