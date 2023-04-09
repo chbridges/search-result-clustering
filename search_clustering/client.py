@@ -5,7 +5,8 @@ from opensearchpy import OpenSearch
 
 
 class ElasticClient:
-    def __init__(self, url="http://localhost:9200"):
+    def __init__(self, url: str = "http://localhost:9200"):
+        self.url = url
         self.client = Elasticsearch(url)
 
     def search(self, query: str, index="faz", field="body", size=10_000):
