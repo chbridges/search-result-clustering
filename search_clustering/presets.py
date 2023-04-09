@@ -49,7 +49,14 @@ def make_pipelines(params: Union[Params, dict]):
 
 def get_demo_preset() -> Tuple[KNNPipeline, Optional[TemporalPipeline], KNNPipeline]:
     pipe_knn = KNNPipeline(
-        NER(), Col2Vec("entities"), Umap(), KMeans(), FrequentPhrases()
+        preprocessing=[
+            ParagraphSplitter(),
+            ParagraphTopicModeling("de"),
+        ],
+        embedding=PooledEmbeddings("topics"),
+        reduction=Umap(),
+        clustering=HDBSCAN(),
+        labeling=FrequentPhrases(language="de", n_phrases=2),
     )
     pipe_temp = None
     pipe_none = KNNPipeline(
@@ -63,6 +70,8 @@ def get_demo_preset() -> Tuple[KNNPipeline, Optional[TemporalPipeline], KNNPipel
 
 
 def get_odp_preset(model="") -> KNNPipeline:
+    clustering: KNNClustering
+
     if model == "Doc2Vec":
         return KNNPipeline(
             ColumnMerger(["title", "snippet"]),
@@ -71,35 +80,23 @@ def get_odp_preset(model="") -> KNNPipeline:
             KMeans(),
             FrequentPhrases("english"),
         )
-
-    if model == "K-Means":
-        return KNNPipeline(
-            ColumnMerger(["title", "snippet"]),
-            SentenceMiniLM("merged", use_cache=True),
-            Umap(8),
-            KMeans(),
-            FrequentPhrases("english"),
-        )
-
-    if model == "DBSCAN":
-        return KNNPipeline(
-            ColumnMerger(["title", "snippet"]),
-            SentenceMiniLM("merged", use_cache=True),
-            Umap(8),
-            DBSCAN(),
-            FrequentPhrases("english"),
-        )
-
-    if model == "HDBSCAN":
-        return KNNPipeline(
-            ColumnMerger(["title", "snippet"]),
-            SentenceMiniLM("merged", use_cache=True),
-            Umap(8),
-            HDBSCAN(),
-            FrequentPhrases("english", n_phrases=2),
-        )
-
-    raise ValueError("Presets: Doc2Vec, K-Means, DBSCAN, HDBSCAN")
+    elif model == "K-Means":
+        clustering = KMeans()
+    elif model == "Hierarchical":
+        clustering = HierarchicalClustering()
+    elif model == "DBSCAN":
+        clustering = DBSCAN()
+    elif model == "HDBSCAN":
+        clustering = HDBSCAN()
+    else:
+        raise ValueError("Presets: Doc2Vec, K-Means, DBSCAN, HDBSCAN")
+    return KNNPipeline(
+        ColumnMerger(["title", "snippet"]),
+        SentenceMiniLM("merged", use_cache=True),
+        Umap(8),
+        clustering,
+        FrequentPhrases("english"),
+    )
 
 
 def get_odp_params(model=""):
