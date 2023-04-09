@@ -4,15 +4,11 @@ from abc import ABC, abstractmethod
 from string import punctuation
 from typing import List
 
-import numpy as np
 import pke
 import spacy
-from flair.data import Sentence
-from flair.models import SequenceTagger
 from gensim.corpora import Dictionary
-from gensim.models import LdaModel, LsiModel
+from gensim.models import HdpModel
 from gensim.models.basemodel import BaseTopicModel
-from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 
 
@@ -127,7 +123,7 @@ class ParagraphTopicModeling(Preprocessing):
     """Return topics using Latent Semantic Indexing."""
 
     def __init__(
-        self, language: str = "en", top_n: int = 3, model: BaseTopicModel = LdaModel
+        self, language: str = "en", top_n: int = 3, model: BaseTopicModel = HdpModel
     ) -> None:
         self.stopwords = importlib.import_module(f"spacy.lang.{language}").STOP_WORDS
         self.top_n = top_n
@@ -145,21 +141,21 @@ class ParagraphTopicModeling(Preprocessing):
         paragraphs = doc["_source"]["paragraphs"]
         corpus_str = [self.tokenize(paragraph) for paragraph in paragraphs]
         id2word = Dictionary(corpus_str)
-        bows = [id2word.doc2bow(doc) for doc in corpus_str]
-        model = self.model(bows, id2word=id2word, num_topics=len(paragraphs))
+        bows = [id2word.doc2bow(para) for para in corpus_str]
+        model = self.model(bows, id2word=id2word).suggested_lda_model()
+
         doc["_source"]["topics"] = []
-        for i in range(len(paragraphs)):
-            topic_id = model.get_document_topics(bows[i])[0][0]
+        for bow in bows:
+            topic_id = model.get_document_topics(bow, minimum_probability=1e-8)[0][0]
             topics = [
                 topic[0] for topic in model.show_topic(topic_id) if len(topic[0]) > 1
             ]
             doc["_source"]["topics"].append(", ".join(topics[: self.top_n]))
+
         return doc
 
     def transform(self, docs: List[dict]) -> List[dict]:
-        for i in range(len(docs)):
-            docs[i] = self.add_topics(docs[i])
-        return docs
+        return [self.add_topics(doc) for doc in docs]
 
 
 class NER(Preprocessing):
