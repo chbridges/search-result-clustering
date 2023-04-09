@@ -74,29 +74,32 @@ class SentenceMiniLM(TransformerEmbedding):
         )
 
 
-class ParagraphPoolEmbeddings(Embedding):
+class PooledEmbeddings(Embedding):
     """Average pool paragraph-wise embeddings.
 
     Needs to follow ParagraphSplitter.
     """
 
-    def __init__(self, weighted: bool = True) -> None:
+    def __init__(self, column: str = "paragraphs", weighted: bool = True) -> None:
+        self.column = column
         self.weighted = weighted
         self.embedding_model = SentenceTransformerDocumentEmbeddings(
             "paraphrase-multilingual-MiniLM-L12-v2"
         )
 
     def embed(self, doc: dict) -> np.ndarray:
-        paragraphs = doc["_source"]["paragraphs"]
+        features = doc["_source"][self.column]
+        if len(doc["_source"][self.column]) != len(doc["_source"]["paragraphs"]):
+            print(doc)
 
         if self.weighted:
             weights = np.array(doc["_source"]["weights"])
         else:
-            weights = [1 / len(paragraphs) for _ in paragraphs]
+            weights = [1 / len(features) for _ in features]
 
-        tokenized_paragraphs = [Sentence(p) for p in paragraphs]
-        tokenized_paragraphs = self.embedding_model.embed(tokenized_paragraphs)
-        embeddings = np.vstack([p.embedding.cpu() for p in tokenized_paragraphs])
+        tokenized_features = [Sentence(f) for f in features]
+        tokenized_features = self.embedding_model.embed(tokenized_features)
+        embeddings = np.vstack([f.embedding.cpu() for f in tokenized_features])
         weighted_embeddings = weights[:, np.newaxis] * embeddings
         return np.sum(weighted_embeddings, axis=0)
 
