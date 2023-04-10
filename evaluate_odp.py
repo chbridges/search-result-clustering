@@ -175,7 +175,7 @@ if __name__ == "__main__":
     data = create_odp239_splits(df)
     data = embed_odp239_labels_in_splits(data)
 
-    results = evaluate(data, get_odp_params())
+    results = evaluate(data, get_odp_params("all"))
 
     with open("results/evaluation_odp.json", "w") as f:
         f.write(json.dumps(results, indent=2))

@@ -7,7 +7,7 @@ from flair.data import Sentence
 from flair.embeddings import DocumentPoolEmbeddings, WordEmbeddings
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import normalize
-from torch import Tensor, mean, stack
+from torch import Tensor
 
 DEFAULT_PATH = str(Path(__file__).parent / "../../datasets/odp-239")
 DEFAULT_EMBEDDINGS = DocumentPoolEmbeddings(WordEmbeddings("en-glove"))
@@ -149,13 +149,13 @@ def align_clusters_by_label(
 
     target_embeddings = target_embeddings
     X = np.vstack([embedding.cpu() for embedding in target_embeddings.keys()])
-    y = np.vstack(target_embeddings.values())
+    y = np.vstack(list(target_embeddings.values()))
 
     if cosine:
         X = normalize(X, axis=1)
         label_embeddings = normalize(label_embeddings, axis=1)
 
-    knn.fit(normalize(X, axis=1), y)
+    knn.fit(normalize(X, axis=1), y.ravel())
     labels = knn.predict(label_embeddings)
     labels = np.append(labels, -1)  # for density-based algos
     return [labels[c] for c in clusters]
