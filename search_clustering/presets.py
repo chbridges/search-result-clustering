@@ -78,7 +78,7 @@ def get_odp_preset(model="") -> KNNPipeline:
             Col2Vec("merged"),
             DummyReduction(),
             KMeans(),
-            FrequentPhrases("english"),
+            FrequentPhrases("en"),
         )
     elif model == "K-Means":
         clustering = KMeans()
@@ -95,7 +95,7 @@ def get_odp_preset(model="") -> KNNPipeline:
         SentenceMiniLM("merged", use_cache=True),
         Umap(8),
         clustering,
-        FrequentPhrases("english"),
+        FrequentPhrases("en"),
     )
 
 
@@ -106,7 +106,7 @@ def get_odp_params(model=""):
             "embedding": [Col2Vec("merged"), SentenceMiniLM("merged")],
             "reduction": [DummyReduction(), Umap(8)],
             "clustering": [KMeans(), HierarchicalClustering(), DBSCAN(), HDBSCAN()],
-            "labeling": [FrequentPhrases("english")],
+            "labeling": [FrequentPhrases("en")],
         }
 
     if model == "caching":
@@ -115,7 +115,7 @@ def get_odp_params(model=""):
             "embedding": [SentenceMiniLM("merged", use_cache=True)],
             "reduction": [Umap(8)],
             "clustering": [DummyClustering(), DBSCAN()],
-            "labeling": [FrequentPhrases("english")],
+            "labeling": [FrequentPhrases("en")],
         }
 
     if model == "densmap":
@@ -124,7 +124,7 @@ def get_odp_params(model=""):
             "embedding": [Col2Vec("merged"), SentenceMiniLM("merged")],
             "reduction": [Umap(8, densmap=True)],
             "clustering": [HDBSCAN()],
-            "labeling": [FrequentPhrases("english")],
+            "labeling": [FrequentPhrases("en")],
         }
 
-    raise ValueError("Presets: all, caching, densmap")
+    raise ValueError("Presets: 'all', 'caching', 'densmap'")
