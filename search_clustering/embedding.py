@@ -1,4 +1,3 @@
-import multiprocessing
 from abc import ABC, abstractmethod
 from typing import List, Union
 
@@ -26,7 +25,7 @@ class TransformerEmbedding(Embedding):
     """Embed input documents in transformer document embeddings."""
 
     embedding_model: Union[
-        SentenceTransformerDocumentEmbeddings, TransformerDocumentEmbeddings
+        DocumentPoolEmbeddings, SentenceTransformerDocumentEmbeddings, TransformerDocumentEmbeddings
     ]
 
     def __init__(self, key: str = "body", use_cache: bool = False) -> None:
@@ -40,8 +39,7 @@ class TransformerEmbedding(Embedding):
         if "embedding" in docs[0]["_source"].keys():
             return np.vstack([doc["_source"]["embedding"] for doc in docs])
 
-        with multiprocessing.pool.ThreadPool() as pool:
-            tokenized_docs = list(pool.imap(self.tokenize, docs, chunksize=8))
+        tokenized_docs = [self.tokenize(doc) for doc in docs]
         self.embedding_model.embed(tokenized_docs)
 
         embeddings = np.vstack([doc.embedding.cpu() for doc in tokenized_docs])
@@ -104,8 +102,7 @@ class PooledEmbeddings(Embedding):
         return np.sum(weighted_embeddings, axis=0)
 
     def transform(self, docs: List[dict]) -> np.ndarray:
-        with multiprocessing.pool.ThreadPool() as pool:
-            embeddings = list(pool.imap(self.embed, docs, chunksize=8))
+        embeddings = [self.embed(doc) for doc in docs]
         return np.vstack(embeddings)
 
 
