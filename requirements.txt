@@ -11,6 +11,7 @@ opensearch-py==2.0.0
 pandas==1.5.2
 pke @ git+https://github.com/boudinfl/pke.git@f2d4f5d2252c64d23defccd32fdac8809cfd7ce0
 scikit_learn==1.2.2
+sentence-transformers==2.2.2
 spacy==3.4.3
 topically==0.0.5
 tqdm==4.64.1
