@@ -72,7 +72,7 @@ def get_demo_preset() -> Tuple[KNNPipeline, Optional[TemporalPipeline], KNNPipel
 def get_odp_preset(model="") -> KNNPipeline:
     clustering: KNNClustering
 
-    if model == "Doc2Vec":
+    if model == "doc2vec":
         return KNNPipeline(
             ColumnMerger(["title", "snippet"]),
             Col2Vec("merged"),
@@ -80,16 +80,16 @@ def get_odp_preset(model="") -> KNNPipeline:
             KMeans(),
             FrequentPhrases("en"),
         )
-    elif model == "K-Means":
+    elif model == "kmeans":
         clustering = KMeans()
-    elif model == "Hierarchical":
+    elif model == "hierarchical":
         clustering = HierarchicalClustering()
-    elif model == "DBSCAN":
+    elif model == "dbscan":
         clustering = DBSCAN()
-    elif model == "HDBSCAN":
+    elif model == "hdbscan":
         clustering = HDBSCAN()
     else:
-        raise ValueError("Presets: Doc2Vec, K-Means, DBSCAN, HDBSCAN")
+        raise ValueError("Presets: doc2vec, kmeans, hierarchical, dbscan, hdbscan")
     return KNNPipeline(
         ColumnMerger(["title", "snippet"]),
         SentenceMiniLM("merged", use_cache=True),
