@@ -4,20 +4,20 @@ from typing import Dict, List, Optional, Union
 import numpy as np
 import pandas as pd
 from flair.data import Sentence
-from flair.embeddings import DocumentPoolEmbeddings, WordEmbeddings
+from flair.embeddings import DocumentPoolEmbeddings, SentenceTransformerDocumentEmbeddings
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import normalize
-from torch import Tensor, mean, stack
+from torch import Tensor
 
 DEFAULT_PATH = str(Path(__file__).parent / "../../datasets/odp-239")
-DEFAULT_EMBEDDINGS = DocumentPoolEmbeddings(WordEmbeddings("en-glove"))
+DEFAULT_EMBEDDINGS = SentenceTransformerDocumentEmbeddings("paraphrase-multilingual-MiniLM-L12-v2")
 
 
 def split_target_name(target_name: str) -> str:
     return " ".join(target_name.split("_"))
 
 
-def embed_target_name(target_name: str, embeddings: DocumentPoolEmbeddings) -> Tensor:
+def embed_target_name(target_name: str, embeddings: Union[DocumentPoolEmbeddings, SentenceTransformerDocumentEmbeddings]) -> Tensor:
     sentence = Sentence(target_name)
     embeddings.embed(sentence)
     return sentence.embedding
@@ -121,8 +121,6 @@ def embed_odp239_labels_in_splits(
     :returns: Dictionary of category-wise dataset splits with inverse mapping for kNN evaluation
     :rtype: Dict[str, Union[list, Dict[str, tuple], Dict[str, Tensor]]]
     """
-    embedding_cache = {}
-
     for category in data.keys():
         data[category]["target_embeddings"] = {}
         target_names = data[category]["target_names"]
@@ -131,14 +129,9 @@ def embed_odp239_labels_in_splits(
             if return_topic_ids:
                 subtopic_id = strip_subtopic_id(subtopic_id)
 
-            for label in topic_subtopic:
-                if label not in embedding_cache:
-                    embedding_cache[label] = embed_target_name(label, embeddings)
+            label = " ".join(topic_subtopic)
+            target_name_embedding = embed_target_name(label, embeddings).cpu()
 
-            topic, subtopic = topic_subtopic
-            target_name_embedding = mean(
-                stack([embedding_cache[topic], embedding_cache[subtopic]]), 0
-            )
             data[category]["target_embeddings"][target_name_embedding] = subtopic_id
 
     return data
@@ -155,14 +148,14 @@ def align_clusters_by_label(
     knn = KNeighborsClassifier(n_neighbors=n_neighbors, weights=weights)
 
     target_embeddings = target_embeddings
-    X = np.vstack([embedding for embedding in target_embeddings.keys()])
-    y = np.vstack(target_embeddings.values())
+    X = np.vstack([embedding.cpu() for embedding in target_embeddings.keys()])
+    y = np.vstack(list(target_embeddings.values()))
 
     if cosine:
         X = normalize(X, axis=1)
         label_embeddings = normalize(label_embeddings, axis=1)
 
-    knn.fit(normalize(X, axis=1), y)
+    knn.fit(normalize(X, axis=1), y.ravel())
     labels = knn.predict(label_embeddings)
     labels = np.append(labels, -1)  # for density-based algos
     return [labels[c] for c in clusters]

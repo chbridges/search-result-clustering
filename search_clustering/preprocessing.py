@@ -1,14 +1,13 @@
-import multiprocessing
+import importlib
 from abc import ABC, abstractmethod
+from string import punctuation
 from typing import List, Optional
 
-import numpy as np
-from bertopic import BERTopic
-from flair.data import Sentence
-from flair.models import SequenceTagger
-from gensim.models.doc2vec import Doc2Vec, TaggedDocument
+import spacy
+from gensim.corpora import Dictionary
+from gensim.models import HdpModel
+from gensim.models.basemodel import BaseTopicModel
 from keybert import KeyBERT
-from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from sklearn.feature_extraction.text import CountVectorizer
 
@@ -28,25 +27,10 @@ class DummyPreprocessor(Preprocessing):
         return docs
 
 
-class StopWordRemoval(Preprocessing):
-    """Remove stopwords from a given column."""
-
-    def __init__(self, column: str = "body", language: str = "german"):
-        self.column = column
-        self.word_list = stopwords.words(language)
-
-    def transform(self, docs: List[dict]) -> List[dict]:
-        tokens = [word_tokenize(doc["_source"][self.column]) for doc in docs]
-        tokens = [t for t in tokens if t not in self.word_list]
-        for i in range(len(docs)):
-            docs[i]["snippet"] = " ".join(tokens[i])
-        return docs
-
-
 class ColumnMerger(Preprocessing):
     """Merge multiple columns."""
 
-    def __init__(self, columns: list, sep: str = ". ") -> None:
+    def __init__(self, columns: List[str], sep: str = ". ") -> None:
         self.columns = columns
         self.sep = sep
 
@@ -55,6 +39,20 @@ class ColumnMerger(Preprocessing):
             source = docs[i]["_source"]
             merged = self.sep.join([source[col] for col in self.columns])
             docs[i]["_source"]["merged"] = merged
+        return docs
+
+
+class ListJoiner(Preprocessing):
+    """Concatenate a nested list to a flat list of strings."""
+
+    def __init__(self, column: str, sep: str = ". ") -> None:
+        self.column = column
+        self.sep = sep
+
+    def transform(self, docs: List[dict]) -> List[dict]:
+        for i in range(len(docs)):
+            joined = self.sep.join(docs[i]["_source"][self.column])
+            docs[i]["_source"]["joined"] = joined
         return docs
 
 
@@ -79,29 +77,68 @@ class ParagraphSplitter(Preprocessing):
         return doc
 
     def transform(self, docs: List[dict]) -> List[dict]:
-        with multiprocessing.pool.ThreadPool() as pool:
-            return list(pool.imap(self.add_paragraphs_and_weights, docs, chunksize=8))
+        return [self.add_paragraphs_and_weights(doc) for doc in docs]
 
 
-class ParagraphKeyphraseExtractor(Preprocessing):
+class ParagraphGraphKeyphraseExtractor(Preprocessing):
+    """Assign a topic to each paragraph in the document."""
+    import pke
+
+    def __init__(
+        self,
+        language: str = "en",
+        max_phrases: int = 5,
+        sep: str = ", ",
+        extractor=pke.unsupervised.SingleRank,
+    ) -> None:
+        self.language = language
+        self.max_phrases = max_phrases
+        self.sep = sep
+        self.extractor = extractor
+
+    def add_keyphrases(self, doc: dict) -> dict:
+        if "keyphrases" in doc["_source"].keys():
+            return doc
+
+        extractor = self.extractor()
+
+        keyphrases = []
+        for paragraph in doc["_source"]["paragraphs"]:
+            extractor.load_document(input=paragraph, language=self.language)
+            extractor.candidate_selection()
+            extractor.candidate_weighting()
+            keyphrases_p = extractor.get_n_best(n=self.max_phrases)
+            joined = self.sep.join([keyphrase[0] for keyphrase in keyphrases_p])
+            keyphrases.append(joined)
+        doc["_source"]["keyphrases"] = keyphrases
+
+        return doc
+
+    def transform(self, docs: List[dict]) -> List[dict]:
+        return [self.add_keyphrases(doc) for doc in docs]
+
+
+class ParagraphLLMKeyphraseExtractor(Preprocessing):
     """Assign a topic to each paragraph in the document."""
 
     def __init__(
         self,
         query: Optional[str] = None,
+        language: str = "en",
+        sep: str = ", ",
         ngram_range: tuple = (1, 3),
     ) -> None:
+        self.sep = sep
         self.query = [query] if query else None
         self.model = KeyBERT(model="paraphrase-multilingual-MiniLM-L12-v2")
+        stopwords = importlib.import_module(f"spacy.lang.{language}").STOP_WORDS
         self.vectorizer = CountVectorizer(
-            stop_words=stopwords.words("german"), ngram_range=ngram_range
+            stop_words=list(stopwords), ngram_range=ngram_range
         )
 
-    def add_topics(self, doc: dict) -> dict:
-        if "topics" in doc["_source"].keys():
+    def add_keyphrases(self, doc: dict) -> dict:
+        if "keyphrases" in doc["_source"].keys():
             return doc
-
-        title = doc["_source"]["title"]
 
         keywords = self.model.extract_keywords(
             doc["_source"]["paragraphs"],
@@ -109,80 +146,63 @@ class ParagraphKeyphraseExtractor(Preprocessing):
             seed_keywords=self.query,
         )
 
-        doc["_source"]["topics"] = ". ".join(
-            [title] + [", ".join([kw[0] for kw in kw_i]) for kw_i in keywords]
-        )
+        doc["_source"]["keyphrases"] = [", ".join([kw[0] for kw in kw_i]) for kw_i in keywords]
 
         return doc
 
     def transform(self, docs: List[dict]) -> List[dict]:
-        with multiprocessing.pool.ThreadPool() as pool:
-            return list(pool.imap(self.add_topics, docs, chunksize=8))
+        return [self.add_keyphrases(doc) for doc in docs]
 
 
-class ParagraphTopicPreprocessor(Preprocessing):
-    """Assign a topic to each paragraph in the document."""
+class ParagraphTopicModeling(Preprocessing):
+    """Return topics using Latent Semantic Indexing."""
 
-    def __init__(self) -> None:
-        vectorizer = CountVectorizer(
-            stop_words=stopwords.words("german"), ngram_range=(1, 3)
-        )
-        self.topic_model = BERTopic(
-            language="multilingual", vectorizer_model=vectorizer
-        )
+    def __init__(
+        self, language: str = "en", top_n: int = 3, model: BaseTopicModel = HdpModel
+    ) -> None:
+        self.stopwords = importlib.import_module(f"spacy.lang.{language}").STOP_WORDS
+        self.top_n = top_n
+        self.model = model
+
+    def tokenize(self, doc: str) -> List[str]:
+        tokens = word_tokenize(doc.lower())
+        tokens = [t for t in tokens if t not in self.stopwords]
+        return [t for t in tokens if t not in punctuation]
 
     def add_topics(self, doc: dict) -> dict:
-        title = [doc["_source"]["title"]]
-        paragraphs = title + doc["_source"]["body"].split("\n\n")
-        tagged_paragraphs = [
-            TaggedDocument(paragraph, [i]) for i, paragraph in enumerate(paragraphs)
-        ]
-        doc2vec = Doc2Vec(tagged_paragraphs, seed=42, workers=1)
-        embeddings = np.array([doc2vec[i] for i in range(len(tagged_paragraphs))])
-        topics, probs = self.topic_model.fit_transform(
-            paragraphs, embeddings=embeddings
-        )
-        doc["_source"]["topics"] = topics
+        if "topics" in doc["_source"].keys():
+            return doc
+
+        paragraphs = doc["_source"]["paragraphs"]
+        corpus_str = [self.tokenize(paragraph) for paragraph in paragraphs]
+        id2word = Dictionary(corpus_str)
+        bows = [id2word.doc2bow(para) for para in corpus_str]
+        model = self.model(bows, id2word=id2word, random_state=42).suggested_lda_model()
+
+        doc["_source"]["topics"] = []
+        for bow in bows:
+            topic_id = model.get_document_topics(bow, minimum_probability=1e-8)[0][0]
+            topics = [
+                topic[0] for topic in model.show_topic(topic_id) if len(topic[0]) > 1
+            ]
+            doc["_source"]["topics"].append(", ".join(topics[: self.top_n]))
+
         return doc
 
     def transform(self, docs: List[dict]) -> List[dict]:
-        with multiprocessing.pool.ThreadPool() as pool:
-            return list(pool.imap(self.add_topics, docs, chunksize=8))
+        return [self.add_topics(doc) for doc in docs]
 
 
 class NER(Preprocessing):
     """Extract named entities from a given column."""
 
-    def _init__(self, column: str = "body") -> None:
+    def __init__(self, column: str = "body") -> None:
         self.column = column
-        self.tagger = SequenceTagger.load("ner-multi")  # EN, DE, NL, ES
+        self.tagger = spacy.load("xx_ent_wiki_sm")
 
     def transform(self, docs: List[dict]) -> List[dict]:
         for i in range(len(docs)):
-            sentence = Sentence(docs[i]["_source"][self.column])
-            self.tagger.predict(sentence)
-            entities = [label.data_point.text for label in sentence.get_labels()]
+            tagged_doc = self.tagger(docs[i]["_source"][self.column])
+            entities = [ent.text for ent in tagged_doc.ents]
             docs[i]["_source"]["entities"] = ", ".join(entities)
-        return docs
-
-
-class ParagraphNER(Preprocessing):
-    """Extract named entities from individual paragraphs."""
-
-    def __init__(self) -> None:
-        self.tagger = SequenceTagger.load("ner-multi")
-
-    def transform(self, docs: List[dict]) -> List[dict]:
-        for i in range(len(docs)):
-            paragraphs = docs[i]["_source"]["paragraphs"]
-            entities: List[List[str]] = [[] for _ in range(len(paragraphs))]
-
-            for paragraph in paragraphs:
-                sentence = Sentence(paragraph)
-                self.tagger.predict(sentence)
-                entities.append(
-                    [label.data_point.text for label in sentence.get_labels()]
-                )
-            docs[i]["_source"]["entities"] = entities
-
         return docs

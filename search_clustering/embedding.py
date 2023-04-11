@@ -1,4 +1,3 @@
-import multiprocessing
 from abc import ABC, abstractmethod
 from typing import List, Union
 
@@ -26,11 +25,12 @@ class TransformerEmbedding(Embedding):
     """Embed input documents in transformer document embeddings."""
 
     embedding_model: Union[
-        SentenceTransformerDocumentEmbeddings, TransformerDocumentEmbeddings
+        DocumentPoolEmbeddings, SentenceTransformerDocumentEmbeddings, TransformerDocumentEmbeddings
     ]
 
-    def __init__(self, key: str = "body") -> None:
+    def __init__(self, key: str = "body", use_cache: bool = False) -> None:
         self.key = key
+        self.use_cache = use_cache
 
     def tokenize(self, doc):
         return Sentence(doc["_source"][self.key])
@@ -39,13 +39,15 @@ class TransformerEmbedding(Embedding):
         if "embedding" in docs[0]["_source"].keys():
             return np.vstack([doc["_source"]["embedding"] for doc in docs])
 
-        with multiprocessing.pool.ThreadPool() as pool:
-            tokenized_docs = list(pool.imap(self.tokenize, docs, chunksize=8))
+        tokenized_docs = [self.tokenize(doc) for doc in docs]
         self.embedding_model.embed(tokenized_docs)
 
-        embeddings = np.vstack([doc.embedding for doc in tokenized_docs])
-        for i in range(len(docs)):
-            docs[i]["_source"]["embedding"] = embeddings[i]
+        embeddings = np.vstack([doc.embedding.cpu() for doc in tokenized_docs])
+
+        if self.use_cache:
+            for i in range(len(docs)):
+                docs[i]["_source"]["embedding"] = embeddings[i]
+
         return embeddings
 
 
@@ -53,52 +55,54 @@ class DistilBERT(TransformerEmbedding):
     """Embed input documents in DistilBERT document embeddings and crash my
     laptop."""
 
-    def __init__(self, key: str = "body") -> None:
-        super().__init__(key)
+    def __init__(self, key: str = "body", use_cache: bool = False) -> None:
+        super().__init__(key, use_cache)
         self.embedding_model = TransformerDocumentEmbeddings(
-            "bert-base-german-cased", fine_tune=False
+            "distilbert-base-multilingual-cased", fine_tune=False
         )
 
 
 class SentenceMiniLM(TransformerEmbedding):
     """Embed input documents in sentence MiniLM document embeddings."""
 
-    def __init__(self, key: str = "body") -> None:
-        super().__init__(key)
+    def __init__(self, key: str = "body", use_cache: bool = False) -> None:
+        super().__init__(key, use_cache)
         self.embedding_model = SentenceTransformerDocumentEmbeddings(
             "paraphrase-multilingual-MiniLM-L12-v2"
         )
 
 
-class ParagraphPoolEmbeddings(Embedding):
+class PooledEmbeddings(Embedding):
     """Average pool paragraph-wise embeddings.
 
     Needs to follow ParagraphSplitter.
     """
 
-    def __init__(self, weighted: bool = True) -> None:
+    def __init__(self, column: str = "paragraphs", weighted: bool = True) -> None:
+        self.column = column
         self.weighted = weighted
         self.embedding_model = SentenceTransformerDocumentEmbeddings(
             "paraphrase-multilingual-MiniLM-L12-v2"
         )
 
     def embed(self, doc: dict) -> np.ndarray:
-        paragraphs = doc["_source"]["paragraphs"]
+        features = doc["_source"][self.column]
+        if len(doc["_source"][self.column]) != len(doc["_source"]["paragraphs"]):
+            print(doc)
 
         if self.weighted:
             weights = np.array(doc["_source"]["weights"])
         else:
-            weights = [1 / len(paragraphs) for _ in paragraphs]
+            weights = [1 / len(features) for _ in features]
 
-        tokenized_paragraphs = [Sentence(p) for p in paragraphs]
-        tokenized_paragraphs = self.embedding_model.embed(tokenized_paragraphs)
-        embeddings = np.vstack([p.embedding for p in tokenized_paragraphs])
+        tokenized_features = [Sentence(f) for f in features]
+        tokenized_features = self.embedding_model.embed(tokenized_features)
+        embeddings = np.vstack([f.embedding.cpu() for f in tokenized_features])
         weighted_embeddings = weights[:, np.newaxis] * embeddings
         return np.sum(weighted_embeddings, axis=0)
 
     def transform(self, docs: List[dict]) -> np.ndarray:
-        with multiprocessing.pool.ThreadPool() as pool:
-            embeddings = list(pool.imap(self.embed, docs, chunksize=8))
+        embeddings = [self.embed(doc) for doc in docs]
         return np.vstack(embeddings)
 
 

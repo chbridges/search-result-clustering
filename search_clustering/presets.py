@@ -1,4 +1,4 @@
-from typing import TypedDict, Union
+from typing import Optional, Tuple, TypedDict, Union
 
 from sklearn.model_selection import ParameterGrid
 
@@ -31,9 +31,9 @@ def make_identifier(params):
     classes_trunc["reduction"] = f"{reduction}{n_components}"
 
     classes_sorted = [classes_trunc[ordering[i]] for i in range(len(ordering))]
-    classes_no_dummy = [c for c in classes_sorted if not "Dummy" in c]
+    # classes_no_dummy = [c for c in classes_sorted if not "Dummy" in c]
 
-    return "_".join(classes_no_dummy)
+    return "_".join(classes_sorted)
 
 
 def make_pipelines(params: Union[Params, dict]):
@@ -47,18 +47,84 @@ def make_pipelines(params: Union[Params, dict]):
     return pipelines
 
 
-params_odp = {
-    "preprocessing": [ColumnMerger(["title", "snippet"])],
-    "embedding": [Col2Vec("merged"), SentenceMiniLM("merged")],
-    "reduction": [DummyReduction(), Umap(32), Umap(16), Umap(8)],
-    "clustering": [KMeans(), HierarchicalClustering(), OPTICS(), HDBSCAN()],
-    "labeling": [FrequentPhrases("english")],
-}
+def get_demo_preset() -> Tuple[KNNPipeline, Optional[TemporalPipeline], KNNPipeline]:
+    pipe_knn = KNNPipeline(
+        preprocessing=[
+            ParagraphSplitter(),
+            ParagraphTopicModeling("de"),
+        ],
+        embedding=PooledEmbeddings("topics"),
+        reduction=Umap(),
+        clustering=HDBSCAN(),
+        labeling=FrequentPhrases(language="de", n_phrases=2),
+    )
+    pipe_temp = None
+    pipe_none = KNNPipeline(
+        DummyPreprocessor(),
+        Col2Vec("body"),
+        DummyReduction(),
+        DummyClustering(),
+        FrequentPhrases(),
+    )
+    return pipe_knn, pipe_temp, pipe_none
 
-params_test = {
-    "preprocessing": [ColumnMerger(["title", "snippet"])],
-    "embedding": [Col2Vec("merged")],
-    "reduction": [Umap(8)],
-    "clustering": [KMeans(), HDBSCAN()],
-    "labeling": [FrequentPhrases("english")],
-}
+
+def get_odp_preset(model="") -> KNNPipeline:
+    clustering: KNNClustering
+
+    if model == "doc2vec":
+        return KNNPipeline(
+            ColumnMerger(["title", "snippet"]),
+            Col2Vec("merged"),
+            DummyReduction(),
+            KMeans(),
+            FrequentPhrases("en"),
+        )
+    elif model == "kmeans":
+        clustering = KMeans()
+    elif model == "hierarchical":
+        clustering = HierarchicalClustering()
+    elif model == "dbscan":
+        clustering = DBSCAN()
+    elif model == "hdbscan":
+        clustering = HDBSCAN()
+    else:
+        raise ValueError("Presets: doc2vec, kmeans, hierarchical, dbscan, hdbscan")
+    return KNNPipeline(
+        ColumnMerger(["title", "snippet"]),
+        SentenceMiniLM("merged", use_cache=True),
+        Umap(8),
+        clustering,
+        FrequentPhrases("en"),
+    )
+
+
+def get_odp_params(model=""):
+    if model == "all":
+        return {
+            "preprocessing": [ColumnMerger(["title", "snippet"])],
+            "embedding": [Col2Vec("merged"), SentenceMiniLM("merged")],
+            "reduction": [DummyReduction(), Umap(8)],
+            "clustering": [KMeans(), HierarchicalClustering(), DBSCAN(), HDBSCAN()],
+            "labeling": [FrequentPhrases("en")],
+        }
+
+    if model == "caching":
+        return {
+            "preprocessing": [ColumnMerger(["title", "snippet"])],
+            "embedding": [SentenceMiniLM("merged", use_cache=True)],
+            "reduction": [Umap(8)],
+            "clustering": [DummyClustering(), DBSCAN()],
+            "labeling": [FrequentPhrases("en")],
+        }
+
+    if model == "densmap":
+        return {
+            "preprocessing": [ColumnMerger(["title", "snippet"])],
+            "embedding": [Col2Vec("merged"), SentenceMiniLM("merged")],
+            "reduction": [Umap(8, densmap=True)],
+            "clustering": [HDBSCAN()],
+            "labeling": [FrequentPhrases("en")],
+        }
+
+    raise ValueError("Presets: 'all', 'caching', 'densmap'")

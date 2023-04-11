@@ -24,11 +24,13 @@ class Clustering(ABC):
         else:
             raise ValueError
 
-    def score(self, vecs: np.ndarray, labels: np.ndarray) -> float:
+    def score(
+        self, vecs: np.ndarray, labels: np.ndarray, ignore_outliers: bool = False
+    ) -> float:
         n_labels = np.unique(labels).shape[0]
         if n_labels == 1:
             return -self.best(-np.inf, np.inf)
-        if n_labels > 2:
+        if ignore_outliers and n_labels > 2:
             vecs = vecs[labels >= 0]
             labels = labels[labels >= 0]
         return self.metric(vecs, labels)

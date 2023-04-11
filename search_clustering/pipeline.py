@@ -52,7 +52,7 @@ class KNNPipeline(Pipeline):
         self.labeling = labeling
 
     def fit_transform(
-        self, docs: List[dict], visualize=True, verbose=True, title=""
+        self, docs: List[dict], visualize=True, verbose=True, title="", legend: bool = True, query=""
     ) -> Tuple[List[dict], np.ndarray, List[str], float]:
         self.verbose = verbose
         steps = 5 + visualize
@@ -74,16 +74,16 @@ class KNNPipeline(Pipeline):
             clusters = self.clustering.fit_predict(docs)
 
         self.print(f"[5/{steps}] Labeling")
-        labels = self.labeling.fit_predict(docs, clusters)
+        labels = self.labeling.fit_predict(docs, clusters, query)
 
         if visualize:
             print(f"[6/{steps}] Visualizing")
-            self.visualize(vecs, clusters, labels, title)
+            self.visualize(vecs, clusters, labels, title, legend)
 
         return docs, clusters, labels, score
 
     def visualize(
-        self, vecs: np.ndarray, clusters: np.ndarray, labels: list, title: str = ""
+        self, vecs: np.ndarray, clusters: np.ndarray, labels: list, title: str = "", legend: bool = True
     ):
         fig = plt.figure(figsize=(4, 4))
         vecs = UMAP(n_components=2).fit_transform(vecs)
@@ -111,9 +111,9 @@ class KNNPipeline(Pipeline):
             )
             for i in range(len(labels))
         ]
-        plt.legend(loc="center left", bbox_to_anchor=(1, 0.5), handles=handles)
+        if legend:
+            plt.legend(loc="center left", bbox_to_anchor=(1, 0.5), handles=handles)
         plt.title(title)
-        plt.tight_layout()
         plt.show()
 
 

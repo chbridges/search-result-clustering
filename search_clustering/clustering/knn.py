@@ -62,7 +62,7 @@ class BisectingOptimization(KNNClustering):
 
         boundaries = [0.01, 0.5, 0.99]
 
-        for _ in range(5):
+        for _ in range(10):
             params = [0.5 * sum(boundaries[:2]), 0.5 * sum(boundaries[1:])]
             models = [self.init_model(param) for param in params]
             labels = [model.fit_predict(vecs) for model in models]
@@ -70,7 +70,7 @@ class BisectingOptimization(KNNClustering):
 
             better_score = self.best(scores[0], scores[1])
 
-            if abs(best_score - better_score) < 10e-5:
+            if abs(best_score - better_score) < 10e-2:
                 break
 
             better_idx = scores.index(better_score)
