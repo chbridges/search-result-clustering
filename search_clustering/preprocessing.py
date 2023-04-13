@@ -82,6 +82,7 @@ class ParagraphSplitter(Preprocessing):
 
 class ParagraphGraphKeyphraseExtractor(Preprocessing):
     """Assign a topic to each paragraph in the document."""
+
     import pke
 
     def __init__(
@@ -146,7 +147,9 @@ class ParagraphLLMKeyphraseExtractor(Preprocessing):
             seed_keywords=self.query,
         )
 
-        doc["_source"]["keyphrases"] = [", ".join([kw[0] for kw in kw_i]) for kw_i in keywords]
+        doc["_source"]["keyphrases"] = [
+            ", ".join([kw[0] for kw in kw_i]) for kw_i in keywords
+        ]
 
         return doc
 

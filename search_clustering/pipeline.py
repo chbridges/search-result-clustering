@@ -52,7 +52,13 @@ class KNNPipeline(Pipeline):
         self.labeling = labeling
 
     def fit_transform(
-        self, docs: List[dict], visualize=True, verbose=True, title="", legend: bool = True, query=""
+        self,
+        docs: List[dict],
+        visualize=True,
+        verbose=True,
+        title="",
+        legend: bool = True,
+        query="",
     ) -> Tuple[List[dict], np.ndarray, List[str], float]:
         self.verbose = verbose
         steps = 5 + visualize
@@ -83,7 +89,12 @@ class KNNPipeline(Pipeline):
         return docs, clusters, labels, score
 
     def visualize(
-        self, vecs: np.ndarray, clusters: np.ndarray, labels: list, title: str = "", legend: bool = True
+        self,
+        vecs: np.ndarray,
+        clusters: np.ndarray,
+        labels: list,
+        title: str = "",
+        legend: bool = True,
     ):
         fig = plt.figure(figsize=(4, 4))
         vecs = UMAP(n_components=2).fit_transform(vecs)
@@ -136,6 +147,8 @@ class TemporalPipeline(Pipeline):
         visualize: bool = True,
         verbose: bool = True,
         title: str = "",
+        add_xticks: bool = False,
+        query: str = "",
     ) -> Tuple[List[dict], np.ndarray, List[str]]:
         self.verbose = verbose
         steps = 3 + visualize
@@ -147,11 +160,11 @@ class TemporalPipeline(Pipeline):
         clusters, hist = self.clustering.fit_predict(docs)
 
         self.print(f"[3/{steps}] Labeling")
-        labels = self.labeling.fit_predict(docs, clusters)
+        labels = self.labeling.fit_predict(docs, clusters, query)
 
         if visualize:
             self.print(f"[4/{steps}] Visualizing")
-            self.visualize(hist, clusters, labels, title)
+            self.visualize(hist, clusters, labels, title, add_xticks)
 
         return docs, clusters, labels
 
@@ -163,7 +176,12 @@ class TemporalPipeline(Pipeline):
         return label
 
     def visualize(
-        self, hist: np.ndarray, clusters: np.ndarray, labels: list, title: str = ""
+        self,
+        hist: np.ndarray,
+        clusters: np.ndarray,
+        labels: list,
+        title: str = "",
+        add_xticks: bool = False,
     ):
         bins = len(hist)
         colors = ["C0" for _ in range(bins)]
@@ -192,6 +210,11 @@ class TemporalPipeline(Pipeline):
         plt.bar(range(bins), hist, color=colors, label=labels[0])
         for i in range(1, len(labels)):
             plt.bar(0, 0, color=f"C{i}", label=labels[i])
-        plt.xticks(range(bins), xticks, rotation=90)
+
+        if add_xticks:
+            plt.xticks(range(bins), xticks, rotation=90)
+        else:
+            plt.xticks([])
+
         plt.legend(loc="center left", bbox_to_anchor=(1, 0.5))
         plt.show()

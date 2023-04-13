@@ -76,7 +76,11 @@ def cluster_knn(D: List[dict]) -> None:
 
 
 def cluster_temp(D) -> None:
-    raise NotImplementedError
+    docs, clusters, labels = pipe_temp.fit_transform(D, verbose=True, visualize=False)
+    cache["D_q"] = docs
+    cache["clusters"] = clusters
+    cache["labels"] = labels
+    print_clusters()
 
 
 def query(q, temporal=False) -> None:

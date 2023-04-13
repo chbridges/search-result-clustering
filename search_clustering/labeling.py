@@ -129,11 +129,15 @@ class FrequentPhrases(Labeling):
                         merged_labels.insert(0, merged_labels.pop(idx_j))
                     break
 
-        return [label for label in merged_labels if label not in self.query.split(" ")]
+        return [
+            label
+            for label in merged_labels
+            if label != self.query and label not in self.query.split(" ")
+        ]
 
 
 class TemporalLabeling(Labeling):
-    def __init__(self, format="%d.%m.%Y") -> None:  # %x
+    def __init__(self, format="%d.%m.%Y", query="") -> None:  # %x
         self.format = format
 
     def fit_predict_cluster(self, docs: List[dict]) -> str:

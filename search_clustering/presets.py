@@ -1,4 +1,4 @@
-from typing import Optional, Tuple, TypedDict, Union
+from typing import Tuple, TypedDict, Union
 
 from sklearn.model_selection import ParameterGrid
 
@@ -47,7 +47,7 @@ def make_pipelines(params: Union[Params, dict]):
     return pipelines
 
 
-def get_demo_preset() -> Tuple[KNNPipeline, Optional[TemporalPipeline], KNNPipeline]:
+def get_demo_preset() -> Tuple[KNNPipeline, TemporalPipeline, KNNPipeline]:
     pipe_knn = KNNPipeline(
         preprocessing=[
             ParagraphSplitter(),
@@ -58,7 +58,11 @@ def get_demo_preset() -> Tuple[KNNPipeline, Optional[TemporalPipeline], KNNPipel
         clustering=HDBSCAN(),
         labeling=FrequentPhrases(language="de", n_phrases=2),
     )
-    pipe_temp = None
+    pipe_temp = TemporalPipeline(
+        DummyPreprocessor(),
+        TemporalClustering(),
+        TemporalLabeling(),
+    )
     pipe_none = KNNPipeline(
         DummyPreprocessor(),
         Col2Vec("body"),
