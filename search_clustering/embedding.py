@@ -25,7 +25,9 @@ class TransformerEmbedding(Embedding):
     """Embed input documents in transformer document embeddings."""
 
     embedding_model: Union[
-        DocumentPoolEmbeddings, SentenceTransformerDocumentEmbeddings, TransformerDocumentEmbeddings
+        DocumentPoolEmbeddings,
+        SentenceTransformerDocumentEmbeddings,
+        TransformerDocumentEmbeddings,
     ]
 
     def __init__(self, key: str = "body", use_cache: bool = False) -> None:

@@ -4,20 +4,28 @@ from typing import Dict, List, Optional, Union
 import numpy as np
 import pandas as pd
 from flair.data import Sentence
-from flair.embeddings import DocumentPoolEmbeddings, SentenceTransformerDocumentEmbeddings
+from flair.embeddings import (
+    DocumentPoolEmbeddings,
+    SentenceTransformerDocumentEmbeddings,
+)
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import normalize
 from torch import Tensor
 
 DEFAULT_PATH = str(Path(__file__).parent / "../../datasets/odp-239")
-DEFAULT_EMBEDDINGS = SentenceTransformerDocumentEmbeddings("paraphrase-multilingual-MiniLM-L12-v2")
+DEFAULT_EMBEDDINGS = SentenceTransformerDocumentEmbeddings(
+    "paraphrase-multilingual-MiniLM-L12-v2"
+)
 
 
 def split_target_name(target_name: str) -> str:
     return " ".join(target_name.split("_"))
 
 
-def embed_target_name(target_name: str, embeddings: Union[DocumentPoolEmbeddings, SentenceTransformerDocumentEmbeddings]) -> Tensor:
+def embed_target_name(
+    target_name: str,
+    embeddings: Union[DocumentPoolEmbeddings, SentenceTransformerDocumentEmbeddings],
+) -> Tensor:
     sentence = Sentence(target_name)
     embeddings.embed(sentence)
     return sentence.embedding

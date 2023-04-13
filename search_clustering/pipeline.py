@@ -52,7 +52,13 @@ class KNNPipeline(Pipeline):
         self.labeling = labeling
 
     def fit_transform(
-        self, docs: List[dict], visualize=True, verbose=True, title="", legend: bool = True, query=""
+        self,
+        docs: List[dict],
+        visualize=True,
+        verbose=True,
+        title="",
+        legend: bool = True,
+        query="",
     ) -> Tuple[List[dict], np.ndarray, List[str], float]:
         self.verbose = verbose
         steps = 5 + visualize
@@ -83,7 +89,12 @@ class KNNPipeline(Pipeline):
         return docs, clusters, labels, score
 
     def visualize(
-        self, vecs: np.ndarray, clusters: np.ndarray, labels: list, title: str = "", legend: bool = True
+        self,
+        vecs: np.ndarray,
+        clusters: np.ndarray,
+        labels: list,
+        title: str = "",
+        legend: bool = True,
     ):
         fig = plt.figure(figsize=(4, 4))
         vecs = UMAP(n_components=2).fit_transform(vecs)
