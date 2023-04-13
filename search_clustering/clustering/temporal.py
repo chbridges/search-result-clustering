@@ -46,7 +46,7 @@ class TemporalClustering(Clustering):
         bins = self.target_bins if not self.window_size else 100
         interval = timespan / bins
 
-        hist = list(pd.np.histogram(df["date"].astype(int), bins=bins, density=False))[
+        hist = list(pd.np.histogram(df["date"].astype(np.int64), bins=bins, density=False))[
             0
         ]
 
