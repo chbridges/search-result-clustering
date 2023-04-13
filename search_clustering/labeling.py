@@ -6,7 +6,6 @@ from typing import List
 
 import numpy as np
 import pandas as pd
-import topically
 from nltk.tokenize import word_tokenize
 from sklearn.feature_extraction.text import CountVectorizer
 
@@ -51,6 +50,8 @@ class Topically(Labeling):
     def fit_predict(
         self, docs: List[dict], clusters: np.ndarray, query: str = ""
     ) -> List[str]:
+        import topically
+
         counts = [len(np.where(clusters == i)[0]) for i in range(max(clusters) + 1)]
         app = topically.Topically("api-key")
         titles = [doc["_source"]["title"] for doc in docs]

@@ -1,15 +1,15 @@
 import importlib
-import multiprocessing
 from abc import ABC, abstractmethod
 from string import punctuation
-from typing import List
+from typing import List, Optional
 
-import pke
 import spacy
 from gensim.corpora import Dictionary
 from gensim.models import HdpModel
 from gensim.models.basemodel import BaseTopicModel
+from keybert import KeyBERT
 from nltk.tokenize import word_tokenize
+from sklearn.feature_extraction.text import CountVectorizer
 
 
 class Preprocessing(ABC):
@@ -77,12 +77,12 @@ class ParagraphSplitter(Preprocessing):
         return doc
 
     def transform(self, docs: List[dict]) -> List[dict]:
-        with multiprocessing.pool.ThreadPool() as pool:
-            return list(pool.imap(self.add_paragraphs_and_weights, docs, chunksize=8))
+        return [self.add_paragraphs_and_weights(doc) for doc in docs]
 
 
-class ParagraphKeyphraseExtractor(Preprocessing):
+class ParagraphGraphKeyphraseExtractor(Preprocessing):
     """Assign a topic to each paragraph in the document."""
+    import pke
 
     def __init__(
         self,
@@ -115,8 +115,43 @@ class ParagraphKeyphraseExtractor(Preprocessing):
         return doc
 
     def transform(self, docs: List[dict]) -> List[dict]:
-        with multiprocessing.pool.ThreadPool() as pool:
-            return list(pool.imap(self.add_keyphrases, docs, chunksize=8))
+        return [self.add_keyphrases(doc) for doc in docs]
+
+
+class ParagraphLLMKeyphraseExtractor(Preprocessing):
+    """Assign a topic to each paragraph in the document."""
+
+    def __init__(
+        self,
+        query: Optional[str] = None,
+        language: str = "en",
+        sep: str = ", ",
+        ngram_range: tuple = (1, 3),
+    ) -> None:
+        self.sep = sep
+        self.query = [query] if query else None
+        self.model = KeyBERT(model="paraphrase-multilingual-MiniLM-L12-v2")
+        stopwords = importlib.import_module(f"spacy.lang.{language}").STOP_WORDS
+        self.vectorizer = CountVectorizer(
+            stop_words=list(stopwords), ngram_range=ngram_range
+        )
+
+    def add_keyphrases(self, doc: dict) -> dict:
+        if "keyphrases" in doc["_source"].keys():
+            return doc
+
+        keywords = self.model.extract_keywords(
+            doc["_source"]["paragraphs"],
+            vectorizer=self.vectorizer,
+            seed_keywords=self.query,
+        )
+
+        doc["_source"]["keyphrases"] = [", ".join([kw[0] for kw in kw_i]) for kw_i in keywords]
+
+        return doc
+
+    def transform(self, docs: List[dict]) -> List[dict]:
+        return [self.add_keyphrases(doc) for doc in docs]
 
 
 class ParagraphTopicModeling(Preprocessing):
@@ -142,7 +177,7 @@ class ParagraphTopicModeling(Preprocessing):
         corpus_str = [self.tokenize(paragraph) for paragraph in paragraphs]
         id2word = Dictionary(corpus_str)
         bows = [id2word.doc2bow(para) for para in corpus_str]
-        model = self.model(bows, id2word=id2word).suggested_lda_model()
+        model = self.model(bows, id2word=id2word, random_state=42).suggested_lda_model()
 
         doc["_source"]["topics"] = []
         for bow in bows:

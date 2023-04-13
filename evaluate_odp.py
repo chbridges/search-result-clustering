@@ -5,7 +5,7 @@ from typing import Dict, List
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import Lasso
 from sklearn.metrics import adjusted_rand_score
 from tqdm import tqdm
 
@@ -107,7 +107,7 @@ def evaluate_detailed(data: dict, pipeline: KNNPipeline) -> pd.DataFrame:
 
         category.append(cat)
         support.append(len(data[cat]["data"]))
-        n_clusters.append(max(clusters) + 1)
+        n_clusters.append(max(clusters))
         ari.append(adjusted_rand_score(data[cat]["target"], clusters))
         recall.append(subtopic_recall(data[cat]["target"], aligned_clusters))
 
@@ -126,7 +126,7 @@ def plot_correlations(df: pd.DataFrame, title: str = ""):
     df["n_clusters"] /= df["n_clusters"].max()
     corr = df.corr()["support"]
     x = np.linspace(df["support"].min(), df["support"].max(), num=2).reshape(-1, 1)
-    lr = LinearRegression()
+    lr = Lasso()
 
     fig, ax = plt.subplots(figsize=(5, 5))
 
@@ -143,7 +143,8 @@ def plot_correlations(df: pd.DataFrame, title: str = ""):
         )
 
     ax.set_xlabel("Number of Documents")
-    ax.legend(loc="upper left")
+    ax.set_ylim(0.0, 1.0)
+    ax.legend()
     ax.set_title(title)
     fig.show()
 
@@ -175,7 +176,7 @@ if __name__ == "__main__":
     data = create_odp239_splits(df)
     data = embed_odp239_labels_in_splits(data)
 
-    results = evaluate(data, get_odp_params())
+    results = evaluate(data, get_odp_params("all"))
 
-    with open("results/evaluation_odp.json", "w") as f:
+    with open("results/evaluation_odp_gpu.json", "w") as f:
         f.write(json.dumps(results, indent=2))
