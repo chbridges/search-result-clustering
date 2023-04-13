@@ -46,9 +46,9 @@ class TemporalClustering(Clustering):
         bins = self.target_bins if not self.window_size else 100
         interval = timespan / bins
 
-        hist = list(pd.np.histogram(df["date"].astype(np.int64), bins=bins, density=False))[
-            0
-        ]
+        hist = list(
+            pd.np.histogram(df["date"].astype(np.int64), bins=bins, density=False)
+        )[0]
 
         # Find time bins with above-average change of n_documents
         diff = abs(np.diff(hist))
