@@ -148,6 +148,7 @@ class TemporalPipeline(Pipeline):
         verbose: bool = True,
         title: str = "",
         add_xticks: bool = False,
+        query: str = "",
     ) -> Tuple[List[dict], np.ndarray, List[str]]:
         self.verbose = verbose
         steps = 3 + visualize
@@ -159,7 +160,7 @@ class TemporalPipeline(Pipeline):
         clusters, hist = self.clustering.fit_predict(docs)
 
         self.print(f"[3/{steps}] Labeling")
-        labels = self.labeling.fit_predict(docs, clusters)
+        labels = self.labeling.fit_predict(docs, clusters, query)
 
         if visualize:
             self.print(f"[4/{steps}] Visualizing")
