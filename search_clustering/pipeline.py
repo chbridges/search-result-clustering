@@ -176,7 +176,12 @@ class TemporalPipeline(Pipeline):
         return label
 
     def visualize(
-        self, hist: np.ndarray, clusters: np.ndarray, labels: list, title: str = "", add_xticks: bool = False
+        self,
+        hist: np.ndarray,
+        clusters: np.ndarray,
+        labels: list,
+        title: str = "",
+        add_xticks: bool = False,
     ):
         bins = len(hist)
         colors = ["C0" for _ in range(bins)]

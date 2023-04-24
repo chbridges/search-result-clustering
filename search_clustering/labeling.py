@@ -129,7 +129,11 @@ class FrequentPhrases(Labeling):
                         merged_labels.insert(0, merged_labels.pop(idx_j))
                     break
 
-        return [label for label in merged_labels if label != self.query and label not in self.query.split(" ")]
+        return [
+            label
+            for label in merged_labels
+            if label != self.query and label not in self.query.split(" ")
+        ]
 
 
 class TemporalLabeling(Labeling):
